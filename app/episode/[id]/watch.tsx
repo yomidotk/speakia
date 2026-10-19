@@ -25,13 +25,13 @@ export default function Watch() {
   const [ended, setEnded] = useState(false);
   const [subs, setSubs] = useState(true);
   const [speed, setSpeed] = useState(1);
-  const [transcriptOpen, setTranscriptOpen] = useState(false);
   const resumeAfterSettings = useRef(false);
   const [settings, setSettings] = useState(false);
   const [error, setError] = useState('');
   const [run, setRun] = useState(0);
   const alive = useRef(true);
   const token = useRef(0);
+  const retried = useRef(false); // the current line has already been retried once
   const people = Array.from(new Set(ep.scene.map((l) => l.who)));
   const line = scene[Math.min(index, scene.length - 1)];
   const sceneHeight = Math.max(150, Math.min(240, height * 0.28));
@@ -47,25 +47,36 @@ export default function Watch() {
     const mine = ++token.current;
     const current = () => alive.current && mine === token.current;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let started = false;
     let completed = false;
+    const advance = () => {
+      retried.current = false;
+      if (index + 1 >= scene.length) { setEnded(true); setPlaying(false); }
+      else setIndex((i) => i + 1);
+    };
+    // A line that never starts (and never errors) would leave the scene waiting forever. The slowest
+    // normal start is about 12 s (6 s for the download, 6 s for the player, then the phone voice),
+    // so after 13 s retry the line once, then skip it.
+    const stuck = setTimeout(() => {
+      if (!current() || started || completed) return;
+      console.warn(`[speakia] watch: line ${index + 1} did not start, ${retried.current ? 'skipping it' : 'retrying'}`);
+      if (retried.current) advance();
+      else { retried.current = true; setRun((r) => r + 1); }
+    }, 13_000);
     void say(line.who, line.text, {
-      onStart: () => { if (current()) setTalking(true); },
+      onStart: () => { started = true; if (current()) setTalking(true); },
       onDone: () => {
         if (!current() || completed) return;
         completed = true; setTalking(false);
-        timer = setTimeout(() => {
-          if (!current()) return;
-          if (index + 1 >= scene.length) { setEnded(true); setPlaying(false); }
-          else setIndex((i) => i + 1);
-        }, 350);
+        timer = setTimeout(() => { if (current()) advance(); }, 350);
       },
     }, false, false, speed).catch(() => { if (current()) { setError('Audio could not play. Try again.'); pause(); } });
-    return () => { token.current++; if (timer) clearTimeout(timer); stopSpeaking(); };
+    return () => { token.current++; clearTimeout(stuck); if (timer) clearTimeout(timer); stopSpeaking(); };
   }, [index, playing, run, name, speed]);
   useEffect(() => {
     if (playing && name !== null) void prepareLines(scene.slice(index + 1, index + 2));
   }, [playing, index, name]);
-  const replay = () => { pause(); setIndex(0); setEnded(false); setError(''); setRun((r) => r + 1); setPlaying(true); };
+  const replay = () => { pause(); retried.current = false; setIndex(0); setEnded(false); setError(''); setRun((r) => r + 1); setPlaying(true); };
 
   const openSpeed = () => { resumeAfterSettings.current = playing; pause(); setSettings(true); };
   const closeSpeed = () => { setSettings(false); if (resumeAfterSettings.current && !ended) setPlaying(true); resumeAfterSettings.current = false; };
@@ -90,19 +101,13 @@ export default function Watch() {
         <View style={s.actions}>
           <Pressable accessibilityRole="button" accessibilityLabel={subs ? 'Turn subtitles off' : 'Turn subtitles on'} accessibilityState={{ selected: subs }} style={[s.tool, subs && s.toolOn]} onPress={() => setSubs((v) => !v)}><Text style={s.toolTitle}>CC</Text><Text style={s.caption}>{subs ? 'On' : 'Off'}</Text></Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel={`Playback speed ${speed} times`} style={s.tool} onPress={openSpeed}><Text style={s.toolTitle}>{speed}×</Text><Text style={s.caption}>Speed</Text></Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Open full transcript" style={[s.tool, transcriptOpen && s.toolOn]} onPress={() => setTranscriptOpen(true)}><Text style={s.toolTitle}>Transcript</Text><Text style={s.caption}>All lines</Text></Pressable>
         </View>
+        {ended && <Button label="Listen again" variant="secondary" onPress={replay} />}
         <Button label={ended ? 'Choose my role' : playing ? 'Pause scene' : index === 0 ? 'Play scene' : 'Continue listening'} onPress={ended ? () => router.push({ pathname: '/episode/[id]/role', params: { id: ep.id } }) : () => { setError(''); if (playing) pause(); else setPlaying(true); }} />
       </View>
       <Sheet visible={settings} onClose={closeSpeed} title="Playback speed">
         {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => <Pressable key={rate} accessibilityRole="radio" accessibilityState={{ selected: speed === rate }} accessibilityLabel={`${rate} times speed`} style={[s.setting, speed === rate && s.toolOn]} onPress={() => { setSpeed(rate); closeSpeed(); }}><Text style={s.settingText}>{rate === 1 ? 'Normal · 1×' : `${rate}×`}</Text>{speed === rate && <Text style={s.toolTitle}>✓</Text>}</Pressable>)}
         <Body>When playing, changing speed restarts the current line at your chosen speed.</Body>
-      </Sheet>
-      <Sheet visible={transcriptOpen} onClose={() => setTranscriptOpen(false)} title="Scene transcript">
-        <Body>Read the full scene. The current line is highlighted; playback continues while this panel is open.</Body>
-        {scene.map((entry, i) => <View key={i} style={[s.transcriptLine, i === index && s.toolOn]}><Label>{`${i + 1} · ${CAST[entry.who].shortName}${i === index ? ' · Current' : ''}`}</Label><Text style={s.transcriptText}>{entry.text}</Text></View>)}
-        <Button label="Restart scene" variant="secondary" onPress={() => { setTranscriptOpen(false); replay(); }} />
-        <Button label="Close transcript" onPress={() => setTranscriptOpen(false)} />
       </Sheet>
     </SafeAreaView>
   );
@@ -123,8 +128,6 @@ const s = StyleSheet.create({
   tool: { flex: 1, minHeight: 58, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 3, backgroundColor: C.cream },
   toolOn: { backgroundColor: C.skyTint },
   toolTitle: { fontFamily: F.bold, fontSize: 14, color: C.skyInk },
-  transcriptLine: { padding: 14, borderRadius: 14, gap: 8 },
-  transcriptText: { fontFamily: F.body, color: C.navy, fontSize: 15, lineHeight: 23 },
   setting: { paddingHorizontal: 16, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, gap: 12 },
   settingText: { fontFamily: F.bold, color: C.navy, fontSize: 16, flex: 1 },
   error: { fontFamily: F.semi, color: '#B4372A', fontSize: 14 },
