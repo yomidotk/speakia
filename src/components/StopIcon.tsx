@@ -50,7 +50,11 @@ function University() {
       <Path d="M50 8V26" stroke={NAVY} strokeWidth={2} />
       <Rect x={51} y={8} width={7} height={10} fill="#1F9D55" />
       <Rect x={58} y={8} width={7} height={10} fill="#fff" />
-      <Circle cx={58} cy={13} r={2} fill="#E03A3A" />
+      {/* crescent and star, the same shapes as the gate scene's flag, scaled to this one */}
+      <G transform="translate(58 13) scale(0.85) translate(-189 -34)">
+        <Path d="M190.72 31.88A3 3 0 1 0 190.72 36.12A2.4 2.4 0 1 1 190.72 31.88Z" fill="#E03A3A" />
+        <Path d="M191.3 32.7L191.61 33.58L192.54 33.6L191.8 34.16L192.06 35.05L191.3 34.52L190.54 35.05L190.81 34.16L190.06 33.6L190.99 33.58Z" fill="#E03A3A" />
+      </G>
       <Path d="M12 42L50 22L88 42Z" fill={PEACH} />
       <Rect x={18} y={42} width={64} height={44} fill="#fff" />
       <Rect x={14} y={82} width={72} height={6} rx={2} fill="#E3E8F6" />
