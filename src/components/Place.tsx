@@ -95,7 +95,9 @@ function Gate() {
       <Path d="M180 54V28" stroke={NAVY} strokeWidth={2} />
       <Rect x={181} y={28} width={8} height={12} fill="#1F9D55" />
       <Rect x={189} y={28} width={8} height={12} fill="#FFFFFF" />
-      <Circle cx={189} cy={34} r={2.4} fill="#E03A3A" />
+      {/* red crescent (opening to the right) and five-pointed star, centred on the stripe line */}
+      <Path d="M190.72 31.88A3 3 0 1 0 190.72 36.12A2.4 2.4 0 1 1 190.72 31.88Z" fill="#E03A3A" />
+      <Path d="M191.3 32.7L191.61 33.58L192.54 33.6L191.8 34.16L192.06 35.05L191.3 34.52L190.54 35.05L190.81 34.16L190.06 33.6L190.99 33.58Z" fill="#E03A3A" />
       <Palm x={64} />
       <Palm x={300} flip />
       <Ellipse cx={96} cy={174} rx={16} ry={7} fill={MINT} />
