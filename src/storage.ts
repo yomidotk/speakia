@@ -1,3 +1,4 @@
+import type { PracticeReport } from './practice-core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   EmailAuthProvider, createUserWithEmailAndPassword, deleteUser, linkWithCredential, sendPasswordResetEmail,
@@ -31,6 +32,8 @@ export type Profile = {
 };
 
 export type Attempt = {
+  sessionId?: string;
+  report?: PracticeReport;
   episodeId: string;
   role: string;
   stars: number;
@@ -109,15 +112,19 @@ export async function getAttempts(): Promise<Attempt[]> {
 
 export async function addAttempt(a: Attempt) {
   const all = await getAttempts();
-  all.push(a);
+  const i = all.findIndex((old) => a.sessionId ? old.sessionId === a.sessionId : old.finishedAt === a.finishedAt);
+  if (i >= 0) all[i] = a; else all.push(a);
   await AsyncStorage.setItem(ATTEMPTS, JSON.stringify(all));
-  cloud((uid) => setDoc(doc(db!, 'users', uid, 'attempts', String(a.finishedAt)), a));
+  cloud((uid) => setDoc(doc(db!, 'users', uid, 'attempts', a.sessionId || String(a.finishedAt)), clean(a)));
 }
 
 /** Best stars per episode, for the map. */
 export function bestStars(attempts: Attempt[]): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const a of attempts) out[a.episodeId] = Math.max(out[a.episodeId] ?? 0, a.stars);
+  for (const a of attempts) {
+    if (a.report && a.report.status !== 'completed') continue;
+    out[a.episodeId] = Math.max(out[a.episodeId] ?? 0, a.stars);
+  }
   return out;
 }
 
@@ -139,7 +146,7 @@ async function pushToCloud(uid: string) {
   const [profile, attempts] = await Promise.all([getProfile(), getAttempts()]);
   const batch = writeBatch(db!);
   if (profile) batch.set(userDoc(uid), { profile: clean(profile), updatedAt: serverTimestamp() }, { merge: true });
-  for (const a of attempts) batch.set(doc(db!, 'users', uid, 'attempts', String(a.finishedAt)), a);
+  for (const a of attempts) batch.set(doc(db!, 'users', uid, 'attempts', a.sessionId || String(a.finishedAt)), clean(a));
   await batch.commit();
 }
 
@@ -242,12 +249,14 @@ export async function startGuest() {
 
 /** Sign out and remove this account's data from the phone (it stays saved in the account). */
 export async function signOut() {
+  await clearPracticeLocal();
   if (auth) await fbSignOut(auth).catch(() => {});
   await AsyncStorage.multiRemove([PROFILE, ATTEMPTS, GUEST]);
 }
 
 /** Delete the learner's saved data everywhere, and their account. */
 export async function deleteEverything(): Promise<'ok' | 'relogin'> {
+  await clearPracticeLocal();
   const u = user();
   if (u && db) {
     try {
@@ -279,4 +288,21 @@ export async function idToken(): Promise<string | null> {
 export function whoIsSignedIn(): 'account' | 'guest' | 'nobody' {
   const u = user();
   return !u ? 'nobody' : u.isAnonymous ? 'guest' : 'account';
+}
+
+/** Session tokens/drafts stay on this device, scoped to the current Firebase user. */
+export async function practiceLocal<T>(key: string): Promise<T | null> {
+  await authReady();
+  const raw = await AsyncStorage.getItem(`speakia.practice.${user()?.uid || 'offline'}.${key}`);
+  try { return raw ? JSON.parse(raw) as T : null; } catch { return null; }
+}
+export async function savePracticeLocal(key: string, value: unknown) {
+  await authReady();
+  const scoped = `speakia.practice.${user()?.uid || 'offline'}.${key}`;
+  if (value === null) await AsyncStorage.removeItem(scoped);
+  else await AsyncStorage.setItem(scoped, JSON.stringify(value));
+}
+async function clearPracticeLocal() {
+  const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith('speakia.practice.'));
+  if (keys.length) await AsyncStorage.multiRemove(keys);
 }

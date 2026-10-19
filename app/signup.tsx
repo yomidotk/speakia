@@ -37,7 +37,8 @@ export default function SignUp() {
     if (r === 'ok') return router.replace((await getProfile()) ? '/map' : '/onboarding/avatar'); // guests keep their progress
     if (r === 'exists') return setExists(true);
     setError(
-      r === 'invalid-email' ? 'That email address doesn’t look right.'
+      r === 'unavailable' ? 'Account setup is not connected on this build. Continue without an account to explore.'
+        : r === 'invalid-email' ? 'That email address doesn’t look right.'
         : r === 'weak' ? 'Choose a stronger password: at least 8 characters, not easy to guess.'
           : r === 'network' ? 'No connection. Check your internet and try again.'
             : r === 'too-many' ? 'Too many tries. Wait a minute and try again.'

@@ -47,7 +47,7 @@ export default function Progress() {
           </View>
           <View style={{ flex: 1, gap: 10 }}>
             <Tile value={String(episodesDone)} label="Episodes" tint={C.mintTint} />
-            <Tile value={String(minutes)} label="Minutes spoken" tint={C.sunTint} />
+            <Tile value={String(minutes)} label="Minutes recorded" tint={C.sunTint} />
           </View>
         </View>
 
@@ -68,7 +68,7 @@ export default function Progress() {
               <>
                 <Meter label="Words per turn" value={wordsPerTurn} max={20} display={wordsPerTurn.toFixed(0)} colour={C.sky} />
                 <Meter label="Independence" value={3 - Math.min(3, avgHints)} max={3} display={`${avgHints.toFixed(1)} hints / episode`} colour={C.mint} />
-                <Meter label="Speaking time" value={minutes} max={60} display={`${minutes} min`} colour={C.peach} />
+                <Meter label="Recording time" value={minutes} max={60} display={`${minutes} min`} colour={C.peach} />
               </>
             ) : (
               <Text style={k.sub}>
@@ -113,13 +113,13 @@ export default function Progress() {
           <>
             <Text style={[s.section, { marginTop: 4 }]}>History</Text>
             {[...attempts].reverse().map((a) => (
-              <View key={a.finishedAt} style={[s.card, s.row]}>
+              <Pressable key={a.sessionId || a.finishedAt} disabled={!a.sessionId} onPress={() => router.push({ pathname: '/episode/[id]/result', params: { id: a.episodeId, session: a.sessionId! } })} style={[s.card, s.row]}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.rowTitle}>{getEpisode(a.episodeId)?.title ?? a.episodeId}</Text>
-                  <Text style={s.rowSub}>as {a.role} · {a.hints} hints · {new Date(a.finishedAt).toLocaleDateString()}</Text>
+                  <Text style={s.rowSub}>as {a.role} · {a.report?.status === 'ended_early' ? 'ended early · ' : ''}{a.hints} hints · {new Date(a.finishedAt).toLocaleDateString()}</Text>
                 </View>
                 <Stars count={a.stars} size={16} />
-              </View>
+              </Pressable>
             ))}
           </>
         )}

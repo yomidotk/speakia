@@ -18,9 +18,12 @@
  */
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { confirmedCorrections } from '../../src/practice-core';
+import { PracticeError, startPractice, practiceTurn, practiceReport } from './practice';
 
 export interface Env {
   GROQ_API_KEY: string;
+  PRACTICE_SIGNING_KEY?: string;
   FISH_API_KEY?: string;
   FIREBASE_PROJECT_ID: string;
   CHAT_MODEL?: string;
@@ -89,16 +92,27 @@ export default {
     const url = new URL(req.url);
     if (req.method === 'GET' && url.pathname === '/') return json({ ok: true, service: 'speakia-api' });
     const route = `${req.method} ${url.pathname}`;
-    if (!['POST /transcribe', 'POST /turn', 'GET /speak', 'POST /assess'].includes(route)) return json({ error: 'Not found' }, 404);
-    if (!(await verifiedUser(req, env))) return json({ error: 'Sign in to use voice and AI' }, 401);
+    if (!['POST /transcribe', 'POST /turn', 'GET /speak', 'POST /assess', 'POST /practice/start', 'POST /practice/turn', 'POST /practice/report'].includes(route)) return json({ error: 'Not found' }, 404);
+    const uid = await verifiedUser(req, env);
+    if (!uid) return json({ error: 'Sign in to use voice and AI' }, 401);
 
     try {
+      if (route.startsWith('POST /practice/')) {
+        if (Number(req.headers.get('content-length') || 0) > 1_000_000) return json({ error: 'Request too large' }, 413);
+        const raw = await req.text();
+        if (raw.length > 1_000_000) return json({ error: 'Request too large' }, 413);
+        let body: Record<string, unknown>;
+        try { body = JSON.parse(raw); } catch { return json({ error: 'Invalid JSON' }, 400); }
+        if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ error: 'Invalid request' }, 400);
+        const handler = route.endsWith('/start') ? startPractice : route.endsWith('/turn') ? practiceTurn : practiceReport;
+        return json(await handler(body, uid, env));
+      }
       if (route === 'POST /transcribe') return await transcribe(req, env);
       if (route === 'POST /turn') return await turn(req, env);
       if (route === 'POST /assess') return await assess(req, env);
       return await speak(url, env, ctx);
     } catch (e) {
-      return json({ error: e instanceof Error ? e.message : 'Server error' }, 500);
+      return json({ error: e instanceof PracticeError ? e.message : 'The service could not finish this request. Please retry.' }, e instanceof PracticeError ? e.status : 500);
     }
   },
 };
@@ -165,7 +179,7 @@ Return ONLY a JSON object with exactly these keys:
  "hints": {"idea": "<what the learner could say next, no full sentence>", "starter": "<first 3-6 words of an answer>", "example": "<one full example answer, max 25 words>"},
  "corrections": [{"said": "<exact short phrase from the learner's LAST message>", "better": "<corrected phrase>"}]
 }
-"corrections": at most 2, only real mistakes, empty array if none. "bridgeWords": empty array if none.
+Never correct punctuation, capitalization, spacing or ASR spelling. Focus on spoken grammar and vocabulary only. "corrections": at most 2, only real mistakes, empty array if none. "bridgeWords": empty array if none.
 The hints are for the learner's NEXT answer to your reply.`;
 }
 
@@ -193,7 +207,7 @@ ${facts}
 
 Return ONLY a JSON object:
 {"reply": "<your reaction>", "bridgeWords": [{"from": "<French/Arabic word used>", "to": "<English word>"}], "corrections": [{"said": "<exact short phrase from the learner's LAST message>", "better": "<corrected phrase>"}]}
-"corrections": at most 2 real mistakes, empty array if none. "bridgeWords": empty array if none.`;
+Never correct punctuation, capitalization, spacing or ASR spelling. Focus on spoken grammar and vocabulary only. "corrections": at most 2 real mistakes, empty array if none. "bridgeWords": empty array if none.`;
 }
 
 async function turn(req: Request, env: Env) {
@@ -250,7 +264,7 @@ async function turn(req: Request, env: Env) {
       starter: hints.starter || 'That’s true, but…',
       example: hints.example || 'That’s true, but I still think my idea is better because it is simpler.',
     },
-    corrections: Array.isArray(out.corrections) ? out.corrections.slice(0, 2) : [],
+    corrections: spokenCorrections(out.corrections, r.history.filter((l) => l.from === 'you').at(-1)?.text || '').slice(0, 2),
   });
 }
 
@@ -384,7 +398,7 @@ Return ONLY a JSON object:
  "improve": ["<max 2 short, practical points>"],
  "corrections": [{"said": "<exact short phrase from a transcript>", "better": "<corrected phrase>"}]
 }
-"corrections": at most 3 real mistakes, empty array if none. Keep every text short, friendly and concrete.`;
+Never correct punctuation, capitalization, spacing or ASR spelling. Focus on spoken grammar and vocabulary only. "corrections": at most 3 real mistakes, empty array if none. Keep every text short, friendly and concrete.`;
 
   const res = await fetch(`${GROQ}/chat/completions`, {
     method: 'POST',
@@ -433,8 +447,12 @@ Return ONLY a JSON object:
     },
     strengths: strings(out.strengths, 2),
     improve: strings(out.improve, 2),
-    corrections: Array.isArray(out.corrections)
-      ? out.corrections.filter((c: any) => typeof c?.said === 'string' && typeof c?.better === 'string').slice(0, 3)
-      : [],
+    corrections: answers.flatMap((a) => spokenCorrections(out.corrections, a.text)).filter((c, i, all) => all.findIndex((other) => other.said === c.said && other.better === c.better) === i).slice(0, 3),
   });
+}
+
+/** Legacy clients/placement keep their response shape while sharing the spoken-expression filter. */
+function spokenCorrections(raw: unknown, text: string) {
+  return confirmedCorrections(Array.isArray(raw) ? raw.map((c) => ({ ...c, category: c?.category || 'grammar' })) : [], text, 'legacy')
+    .map(({ said, better }) => ({ said, better }));
 }

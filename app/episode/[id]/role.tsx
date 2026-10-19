@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Character from '../../../src/components/Character';
 import { BackButton } from '../../../src/components/BackButton';
-import { Body, Button, Title } from '../../../src/components/ui';
+import { Body, Button, Label, Title } from '../../../src/components/ui';
 import { CAST } from '../../../src/content/cast';
 import { getEpisode } from '../../../src/content/episodes';
 import { C, F, shadow } from '../../../src/theme';
@@ -20,8 +20,8 @@ export default function Role() {
       <ScrollView contentContainerStyle={s.content}>
         <BackButton />
         <View style={{ gap: 6 }}>
-          <Title>Now it’s your turn.</Title>
-          <Body>Whose side are you on? The other one will try to change your mind.</Body>
+          <Label>02 · Choose a role</Label><Title>Who will you be?</Title>
+          <Body>Choose who you want to play. The AI plays the other character.</Body>
         </View>
         {ep.roles.map((r, i) => {
           if (!r.player) return null; // guided episodes have no sides
@@ -33,16 +33,16 @@ export default function Role() {
               onPress={() => setPick(i)}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              style={[s.card, shadow, selected && { borderColor: C.skyInk }]}
+              style={[s.card, selected && { borderColor: C.skyInk }]}
             >
               <View style={[s.portrait, { backgroundColor: c.tint }]}>
-                <Character who={r.player} size={110} />
+                <Character who={r.player} size={90} />
               </View>
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={s.name}>{c.shortName}’s side</Text>
+                <Text style={s.name}>{c.shortName}</Text>
                 <Text style={s.trait}>{c.personality}</Text>
                 <Text style={s.mission}>{r.mission}</Text>
-                {selected && <Text style={s.you}>YOUR SIDE</Text>}
+                {selected && <Text style={s.you}>YOUR ROLE</Text>}
               </View>
             </Pressable>
           );
@@ -50,7 +50,7 @@ export default function Role() {
       </ScrollView>
       <View style={{ paddingHorizontal: 24, paddingBottom: 12 }}>
         <Button
-          label="Step into the story"
+          label={pick === null ? 'Choose a role above' : `Practise as ${CAST[ep.roles[pick].player!].shortName}`}
           disabled={pick === null}
           onPress={() => router.replace({ pathname: '/episode/[id]/speak', params: { id: ep.id, role: String(pick) } })}
         />
@@ -62,8 +62,8 @@ export default function Role() {
 const s = StyleSheet.create({
   fill: { flex: 1, backgroundColor: C.cream },
   content: { padding: 24, gap: 16 },
-  card: { flexDirection: 'row', gap: 14, backgroundColor: C.white, borderRadius: 24, padding: 12, borderWidth: 3, borderColor: 'transparent', alignItems: 'center' },
-  portrait: { width: 110, height: 120, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end' },
+  card: { flexDirection: 'row', gap: 14, backgroundColor: C.white, borderRadius: 24, padding: 12, borderWidth: 3, borderColor: C.line, alignItems: 'center' },
+  portrait: { width: 84, height: 110, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end' },
   name: { fontFamily: F.display, fontSize: 22, color: C.navy },
   trait: { fontFamily: F.semi, fontSize: 13, color: C.muted },
   mission: { fontFamily: F.heavy, fontSize: 14, color: C.navy, marginTop: 4 },

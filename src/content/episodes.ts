@@ -1,10 +1,12 @@
-import { CastId } from './cast';
+import type { CastId } from './cast';
 
 export type PlaceId = 'gate' | 'office' | 'cafe' | 'library' | 'lab' | 'amphi';
 
 export type Hints = { idea: string; starter: string; example: string };
 
 export type RoleOption = {
+  guide?: Guide;
+  firstSpeaker?: 'learner' | 'partner';
   player?: CastId;           // the character whose side the learner takes (none in guided episodes)
   partner: CastId;           // the character the AI plays
   mission: string;           // short, shown on the role card
@@ -37,8 +39,8 @@ export type Episode = {
  * writes only a short `react`ion to what the learner actually said; then the partner says `say`
  * (fixed, so it can be voiced in advance). `react` here is the fallback when there is no AI.
  */
-export type GuideLine = { react?: string; say: string; hints?: Hints };
-export type Guide = { partner: CastId; mission: string; goal: string; facts: string[]; lines: GuideLine[] };
+export type GuideLine = { id?: string; stage?: string; criterion?: string; terminal?: boolean; react?: string; say: string; hints?: Hints };
+export type Guide = { mode?: 'scripted' | 'respond'; partner: CastId; mission: string; goal: string; facts: string[]; lines: GuideLine[] };
 
 /** Guided episodes run through the same speaking screen as one built-in "role". */
 export function guideRole(g: Guide): RoleOption {
@@ -187,6 +189,78 @@ export const EPISODES: Episode[] = [
     setting: '', scene: [], roles: [], maxTurns: 3, playable: false,
   },
 ];
+
+// Keep the teacher's order authoritative for both roles. Example student details are fictional.
+const orientation = EPISODES.find((e) => e.id === 'orientation')!;
+const studentGuide = orientation.guide!;
+const topics = [
+  ['registration', 'Check-in', 'Say whether already registered, or request registration here.'],
+  ['identity', 'Check-in', 'Politely give a name and number, or explain the number is unknown.'],
+  ['journey', 'Getting to know each other', 'Describe the journey here, including what happened or how long it took.'],
+  ['university', 'Getting to know each other', 'Give a reason for choosing this university.'],
+  ['living-away', 'Getting to know each other', 'Describe previous experience living away, or say this is the first time.'],
+  ['student-card', 'Practical information', 'Ask a clarification about the student card, photo, deadline or location, or explicitly confirm understanding. A relevant question DOES satisfy this objective; answer it before advancing.'],
+  ['concerns', 'Practical information', 'Explain a worry about starting university, or say there are no worries.'],
+  ['study-preference', 'Practical information', 'Express a preference for studying alone or with others.'],
+  ['study-spaces', 'Practical information', 'React to the study spaces or ask a practical follow-up question. A relevant question satisfies this objective; answer it before advancing.'],
+  ['programme', "Today's programme", 'Choose the campus tour or platform workshop, ideally with a reason.'],
+  ['clubs', "Today's programme", 'Describe an extracurricular interest, or say none.'],
+  ['debate', "Today's programme", 'Describe debate experience or say never tried it.'],
+  ['closing', 'Closing', 'Ask a final question, thank the helper, or politely say there are no more questions.'],
+  ['farewell', 'Closing', 'Terminal farewell.'],
+];
+studentGuide.lines = studentGuide.lines.map((line, i) => ({ ...line, id: topics[i][0], stage: topics[i][1], criterion: topics[i][2], terminal: i === topics.length - 1 }));
+const examples = [
+  'I registered online last week.',
+  'Sure, my name is Yacine Mansouri and my student number is 2026-0415.',
+  'It was fine, but the bus was very crowded. It took me about an hour.',
+  'I chose this university because it has a good reputation for computer science.',
+  'No, never. This is the first time, so it is a big change.',
+  'Sorry, did you say before Friday? Where is Student Services exactly?',
+  'I am worried about making friends because I do not know anyone here.',
+  'I prefer working alone because I can concentrate better. Is there a quiet place to study?',
+  'That sounds useful. I will try the silent rooms.',
+  'I think I am going to do the campus tour because I do not know the buildings yet.',
+  'I am thinking of joining the debate club because I want to improve my speaking.',
+  'Yes, once at high school. It was stressful but fun.',
+  'No, I think that is everything. Thanks for your help!',
+];
+orientation.scene = studentGuide.lines.flatMap((line, i) => [
+  { who: 'sara' as const, text: line.say },
+  ...(examples[i] ? [{ who: 'yacine' as const, text: examples[i] }] : []),
+]);
+const helperObjectives = [
+  ['Welcome the student and ask about registration.', 'Hi there, welcome…', studentGuide.lines[0].say],
+  ['Ask for the student’s full name and number.', 'Could I have…', studentGuide.lines[1].say],
+  ['Ask about their journey this morning.', 'How was…', studentGuide.lines[2].say],
+  ['Ask why they chose this university.', 'Why did you…', studentGuide.lines[3].say],
+  ['Ask whether they have lived away from family before.', 'Have you ever…', studentGuide.lines[4].say],
+  ['Explain the welcome pack and the student card deadline.', 'Here is your…', studentGuide.lines[5].say],
+  ['Answer the card-location/photo question, then ask about worries.', 'Student Services is…', studentGuide.lines[6].say],
+  ['Reassure them and ask about study preferences.', 'That is normal. Do you prefer…', studentGuide.lines[7].say],
+  ['Explain where to find silent and group study spaces.', 'The library has…', studentGuide.lines[8].say],
+  ['Explain today’s programme and ask them to choose tour or workshop.', 'There is a welcome talk…', studentGuide.lines[9].say],
+  ['Mention the clubs fair and ask about interests.', 'This afternoon…', studentGuide.lines[10].say],
+  ['Mention the debate club’s Wednesday meetings and ask about debate experience.', 'We meet…', studentGuide.lines[11].say],
+  ['Invite any final questions before the welcome talk.', 'Do you have…', studentGuide.lines[12].say],
+  ['Close politely and explain that Sara is at the cafeteria at lunchtime.', 'I will be at…', studentGuide.lines[13].say],
+];
+const helperGuide: Guide = {
+  mode: 'respond', partner: 'yacine', mission: 'Be Sara. Welcome the new student and explain the day.',
+  goal: 'Guide a new student through check-in, practical information and today’s programme, in order.',
+  facts: [...studentGuide.facts, 'The new student is Yacine Mansouri, student number 2026-0415, registered online last week.', 'Yacine took a crowded bus for an hour, chose computer science for its reputation, has never lived away and worries about making friends.', 'Yacine prefers studying alone, wants the campus tour and debate club, and debated once at school. These are fictional example student details.'],
+  lines: helperObjectives.map(([criterion, starter, example], i) => ({
+    id: topics[i][0], stage: topics[i][1], criterion, say: criterion,
+    hints: { idea: criterion, starter, example },
+  })),
+};
+orientation.roles = [
+  { ...guideRole(studentGuide), player: 'yacine', guide: studentGuide },
+  { ...guideRole(helperGuide), player: 'sara', firstSpeaker: 'learner', opening: '', guide: helperGuide },
+];
+orientation.setting = 'Orientation Day at a university in Algeria. Sara is the orientation helper; Yacine is the new student. The learner plays the selected role. Use only the configured campus facts.';
+// An episode-level guide bypasses listening/role selection in the existing navigation.
+delete orientation.guide;
 
 /**
  * Lines can say {name}: the characters know the learner by name once they have met (from episode 2

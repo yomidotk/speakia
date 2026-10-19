@@ -1,171 +1,107 @@
-import { useEffect, useRef } from 'react';
-import { Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Character from '../../../src/components/Character';
 import { Button, Card, Label, Title } from '../../../src/components/ui';
-import { CAST, CastId } from '../../../src/content/cast';
-import { EPISODES, getEpisode } from '../../../src/content/episodes';
-import { addAttempt } from '../../../src/storage';
+import { getEpisode } from '../../../src/content/episodes';
+import { duration } from '../../../src/practice-core';
+import { reportPractice, requestId, type ReportRequest } from '../../../src/practice-api';
+import { addAttempt, getAttempts, practiceLocal, savePracticeLocal, type Attempt } from '../../../src/storage';
 import { C, F } from '../../../src/theme';
 
-/** Screen 15 · Result: stars (= independence), real numbers, one thing to say better. */
 export default function Result() {
-  const p = useLocalSearchParams<{
-    id: string; player: CastId; partner: CastId; hints: string; words: string; turns: string; ms: string;
-    spoken?: string; convinced?: string; last?: string; guided?: string; corrections: string;
-  }>();
-  const ep = getEpisode(p.id)!;
-  const hints = Number(p.hints ?? 0);
-  const words = Number(p.words ?? 0);
-  const turns = Math.max(1, Number(p.turns ?? 1));
-  const ms = Number(p.ms ?? 0);
-  const stars = hints === 0 ? 3 : hints <= 2 ? 2 : 1;
-  const label = stars === 3 ? 'Independent' : stars === 2 ? 'Assisted' : 'Guided';
-  let corrections: { said: string; better: string }[] = [];
-  try {
-    corrections = JSON.parse(p.corrections ?? '[]');
-  } catch {}
-
-  const saved = useRef(false);
+  const { id, session } = useLocalSearchParams<{ id: string; session?: string }>();
+  const ep = getEpisode(id)!;
+  const [attempt, setAttempt] = useState<Attempt | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [analysing, setAnalysing] = useState(false);
+  const [error, setError] = useState('');
+  const [showAll, setShowAll] = useState(false);
+  const locked = useRef(false);
+  const alive = useRef(true);
+  const analyse = async (a: Attempt, retry = false) => {
+    if (!session || locked.current) return;
+    locked.current = true; setAnalysing(true); setError('');
+    try {
+      const saved = await practiceLocal<{ request: ReportRequest }>(`report-${session}`);
+      if (!saved) throw new Error('Detailed analysis cannot be retried on this device. Your measured results remain saved.');
+      const request = retry ? { ...saved.request, requestId: requestId() } : saved.request;
+      await savePracticeLocal(`report-${session}`, { ...saved, request });
+      const result = await reportPractice(request);
+      const updated = { ...a, report: result.report };
+      await addAttempt(updated);
+      if (alive.current) setAttempt(updated);
+    } catch (e) {
+      const updated = a.report ? { ...a, report: { ...a.report, analysisStatus: 'failed' as const } } : a;
+      await addAttempt(updated);
+      if (alive.current) { setAttempt(updated); setError(e instanceof Error ? e.message : 'Analysis unavailable. Your measured results are saved.'); }
+    } finally { locked.current = false; if (alive.current) setAnalysing(false); }
+  };
   useEffect(() => {
-    if (saved.current) return; // save once, even if the screen re-renders
-    saved.current = true;
-    addAttempt({ episodeId: ep.id, role: p.player ? CAST[p.player as CastId].shortName : 'You', stars, hints, words, turns, speakingMs: ms, finishedAt: Date.now() });
-  }, [ep.id, p.player, stars, hints, words, turns, ms]);
-
-  const next = EPISODES.find((e) => e.level === ep.level + 1);
-  const sec = Math.round(ms / 1000);
-  const partnerName = CAST[p.partner].shortName;
-  const convinced = p.convinced !== '0'; // older links without the flag count as convinced
-  const typedTurns = Math.max(0, turns - Number(p.spoken ?? turns));
-  const guided = p.guided === '1';
-  const tips = nextSteps({ stars, hints, convinced, typedTurns, turns, wordsPerTurn: words / turns, partnerName, guided });
-
+    alive.current = true;
+    void getAttempts().then((all) => {
+      if (!alive.current) return;
+      const a = all.find((item) => item.sessionId === session) || null;
+      setAttempt(a); setLoading(false);
+      if (a?.report?.analysisStatus === 'pending') void analyse(a);
+    });
+    return () => { alive.current = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+  const r = attempt?.report;
+  if (loading) return <SafeAreaView style={s.fill}><ActivityIndicator accessibilityLabel="Loading results" /></SafeAreaView>;
+  if (!r) return <SafeAreaView style={[s.fill, s.content]}><Title>Results unavailable</Title><Text style={s.tip}>Open the episode again to create a measured practice session.</Text><Button label="Back to the story" onPress={() => router.replace('/map')} /></SafeAreaView>;
+  const complete = r.status === 'completed';
+  const corrections = showAll ? r.corrections : r.corrections.slice(0, 2);
   return (
     <SafeAreaView style={s.fill}>
       <ScrollView contentContainerStyle={s.content}>
-        <View style={{ alignItems: 'center', gap: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4 }}>
-            {[0, 1, 2].map((i) => (
-              <PopStar key={i} on={i < stars} big={i === 1} delay={250 + i * 300} />
-            ))}
-          </View>
-          <Label>{`Level ${ep.level} complete · ${label}`}</Label>
-          <Title style={{ textAlign: 'center' }}>{guided ? `${ep.title}: done!` : convinced ? `You convinced ${partnerName}.` : 'Scene complete.'}</Title>
-        </View>
-
-        <View style={s.partnerRow}>
-          <Character who={p.partner} size={80} happy />
-          <View style={s.bubble}>
-            <Text style={[s.who, { color: CAST[p.partner].dot === C.sun ? '#B98300' : C.mintDark }]}>{CAST[p.partner].shortName.toUpperCase()}</Text>
-            <Text style={s.bubbleText}>{p.last || (convinced ? 'Okay, deal. Nice arguments!' : 'Let’s talk about it again later.')}</Text>
-          </View>
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Stat label="Words / turn" value={String(Math.round(words / turns))} tint={C.skyTint} />
-          <Stat label="Hints" value={String(hints)} tint={C.peachTint} />
-          <Stat label="Spoke for" value={sec ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}` : 'typed'} tint={C.sunTint} />
-        </View>
-
-        <Card style={{ gap: 8 }}>
-          <Text style={s.cardTitle}>Say it better</Text>
-          {corrections.length === 0 ? (
-            <Text style={s.better}>No mistakes spotted in your answers.</Text>
-          ) : (
-            corrections.map((c, i) => (
-              <View key={i} style={{ gap: 2 }}>
-                <Text style={s.said}>{c.said}</Text>
-                <Text style={s.better}>{c.better}</Text>
-              </View>
-            ))
-          )}
+        <Label>04 · Your results</Label>
+        <Label>{complete ? 'Episode complete' : 'Session ended early · progress saved'}</Label>
+        <Title>{ep.title}</Title>
+        {complete && <Text style={s.tip}>{'★'.repeat(attempt?.stars || 0)} · Independence stars reflect hint use, not an English proficiency score.</Text>}
+        <View style={s.row}><Stat label="Total session" value={duration(r.totalMs)} /><Stat label="Active time" value={duration(r.activeMs)} /><Stat label="Recording time" value={duration(r.recordingMs)} /></View>
+        <Text style={s.small}>Active time excludes explicit pauses. Recording time is accepted audio duration, including silence. Speaking-only time is unavailable.</Text>
+        <View style={s.row}><Stat label="Accepted turns" value={String(r.turns)} /><Stat label="Spoken / typed" value={`${r.spokenTurns} / ${r.typedTurns}`} /><Stat label="Words" value={String(r.words)} /></View>
+        <Card style={s.card}>
+          <Text style={s.heading}>Your practice</Text>
+          <Text style={s.tip}>Role: {attempt?.role}. Objectives covered: {r.objectives.length}.</Text>
+          <Text style={s.tip}>Hints revealed: {r.hintReveals} · Highest tier: {r.highestHintTier} · Turns with hints: {r.turnsWithHints}</Text>
+          <Text style={s.small}>Opening the same hint again does not count twice.</Text>
         </Card>
-
-        <Card style={{ gap: 6 }}>
-          <Text style={s.cardTitle}>Your next step</Text>
-          {tips.map((t) => (
-            <Text key={t} style={s.tip}>{t}</Text>
-          ))}
+        <Card style={s.card}>
+          <Text style={s.heading}>Expression corrections · {r.errorCount}</Text>
+          <Text style={s.small}>Grammar: {r.errorsByCategory.grammar || 0} · Vocabulary: {r.errorsByCategory.vocabulary || 0}. Punctuation and capital letters are excluded.</Text>
+          {!r.corrections.length && <Text style={s.tip}>{r.unassessedTurns.length ? 'Some answers were not assessed; no confirmed correction is available.' : 'No expression corrections were recorded. This is not a pronunciation assessment.'}</Text>}
+          {corrections.map((c, i) => <View key={`${c.turnId}-${i}`} style={{ gap: 3 }}><Text style={s.said}>{c.said}</Text><Text style={s.tip}>→ {c.better}</Text><Text style={s.small}>{c.explanation} · Answer {r.objectives.find((o) => o.turnId === c.turnId)?.id || c.turnId.slice(-6)}</Text></View>)}
+          {r.corrections.length > 2 && <Pressable onPress={() => setShowAll((v) => !v)}><Text style={s.link}>{showAll ? 'Show fewer corrections' : `Show all ${r.corrections.length} corrections`}</Text></Pressable>}
+          {r.recurringPatterns.filter((p) => p.occurrences > 1).map((p, i) => <Text key={i} style={s.tip}>Repeated {p.occurrences} times: {p.said} → {p.better}</Text>)}
         </Card>
-
-        {next && (
-          <View style={s.unlock}>
-            <Text style={s.unlockText}>
-              <Text style={{ fontFamily: F.heavy }}>Next: {next.title}. </Text>
-              {next.summary}
-            </Text>
-          </View>
-        )}
+        <Card style={s.card}>
+          <Text style={s.heading}>Recommendations</Text>
+          {analysing && <Text style={s.tip}>Generating notes from your accepted answers…</Text>}
+          {r.strengths.map((text, i) => <Text key={`s-${i}`} style={s.tip}>Strength: {text}</Text>)}
+          {r.priorities.map((text, i) => <Text key={`p-${i}`} style={s.tip}>Practise: {text}</Text>)}
+          <Text style={s.tip}>{r.recommendation}</Text>
+          {r.analysisStatus === 'failed' && <Text style={s.small}>AI notes are unavailable. Your measured results and confirmed corrections are saved.</Text>}
+          {r.analysisStatus === 'unavailable' && <Text style={s.small}>No AI summary was generated for this session.</Text>}
+          {!!error && <Text style={s.small}>{error}</Text>}
+          {r.analysisStatus === 'failed' && !analysing && <Pressable onPress={() => attempt && void analyse(attempt, true)}><Text style={s.link}>Retry AI notes</Text></Pressable>}
+        </Card>
+        <Text style={s.small}>Pronunciation assessment: unavailable. Transcript corrections do not measure pronunciation.</Text>
+        <Button label="Practise again" onPress={() => router.replace({ pathname: '/episode/[id]/intro', params: { id: ep.id } })} />
+        <Button label="Back to the story" variant="secondary" onPress={() => router.replace('/map')} />
       </ScrollView>
-      <View style={{ paddingHorizontal: 24, paddingBottom: 12, gap: 10 }}>
-        <Button label="Continue the story" onPress={() => router.replace('/map')} />
-      </View>
     </SafeAreaView>
   );
 }
-
-/** Up to two pieces of advice that match what actually happened in this scene. */
-function nextSteps(r: {
-  stars: number; hints: number; convinced: boolean; typedTurns: number; turns: number; wordsPerTurn: number; partnerName: string;
-  guided: boolean;
-}): string[] {
-  const tips: string[] = [];
-  if (r.hints > 0) {
-    tips.push(
-      `You used ${r.hints} hint${r.hints > 1 ? 's' : ''}. Answer without hints next time to get ${r.stars === 2 ? 'the third star' : 'more stars'}.`
-    );
-  }
-  if (!r.guided && !r.convinced) tips.push(`${r.partnerName} isn’t convinced yet. Give two clear reasons, each with “because”, before the scene ends.`);
-  if (r.typedTurns > 0) {
-    tips.push(
-      r.typedTurns === r.turns
-        ? 'You typed every answer. Try saying them out loud next time: that’s what builds your speaking.'
-        : `You typed ${r.typedTurns} of your ${r.turns} answers. Try speaking all of them next time.`
-    );
-  }
-  if (r.wordsPerTurn < 8) tips.push(`Your answers were short (about ${Math.round(r.wordsPerTurn)} words). Add a reason or an example to say more.`);
-  if (tips.length === 0) {
-    tips.push(
-      r.guided
-        ? `Perfect run: no hints, and full answers every time. Go on to the next episode.`
-        : `Perfect run: no hints, and you convinced ${r.partnerName}. Replay from the other side of the debate, or go on to the next episode.`
-    );
-  }
-  return tips.slice(0, 2);
+function Stat({ label, value }: { label: string; value: string }) {
+  return <View style={s.stat}><Text style={s.small}>{label}</Text><Text style={s.value}>{value}</Text></View>;
 }
-
-function PopStar({ on, big, delay }: { on: boolean; big: boolean; delay: number }) {
-  const v = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(v, { toValue: 1, duration: 600, delay, easing: Easing.out(Easing.back(2)), useNativeDriver: true }).start();
-  }, [v, delay]);
-  return (
-    <Animated.Text style={{ fontSize: big ? 64 : 46, color: on ? C.sun : '#EDE5D6', transform: [{ scale: v }] }}>★</Animated.Text>
-  );
-}
-
-function Stat({ label, value, tint }: { label: string; value: string; tint: string }) {
-  return (
-    <View style={{ flex: 1, backgroundColor: tint, borderRadius: 18, padding: 12 }}>
-      <Text style={{ fontFamily: F.bold, fontSize: 11, color: '#3D4466' }}>{label}</Text>
-      <Text style={{ fontFamily: F.display, fontSize: 24, color: C.navy }}>{value}</Text>
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: C.cream },
-  content: { padding: 24, gap: 16 },
-  partnerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
-  bubble: { flex: 1, backgroundColor: C.white, borderRadius: 18, borderBottomLeftRadius: 6, padding: 12 },
-  who: { fontFamily: F.heavy, fontSize: 11 },
-  bubbleText: { fontFamily: F.semi, fontSize: 14, color: C.navy },
-  cardTitle: { fontFamily: F.display, fontSize: 18, color: C.navy },
-  said: { fontFamily: F.semi, fontSize: 14, color: C.muted, textDecorationLine: 'line-through' },
-  better: { fontFamily: F.bold, fontSize: 15, color: C.navy, lineHeight: 21 },
-  tip: { fontFamily: F.semi, fontSize: 14, color: C.navy, lineHeight: 20 },
-  unlock: { backgroundColor: C.mintTint, borderRadius: 18, padding: 14 },
-  unlockText: { fontFamily: F.body, fontSize: 13, color: C.navy, lineHeight: 19 },
+  fill: { flex: 1, backgroundColor: C.cream }, content: { padding: 24, gap: 16 }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  stat: { flexGrow: 1, flexBasis: '44%', padding: 16, borderRadius: 16, backgroundColor: C.skyTint }, value: { fontFamily: F.display, fontSize: 23, color: C.navy },
+  card: { gap: 10 }, heading: { fontFamily: F.display, fontSize: 18, color: C.navy }, tip: { fontFamily: F.semi, fontSize: 14, color: C.navy, lineHeight: 21 },
+  small: { fontFamily: F.body, fontSize: 12, color: C.muted, lineHeight: 18 }, said: { fontFamily: F.semi, fontSize: 14, color: C.muted, textDecorationLine: 'line-through' },
+  link: { fontFamily: F.bold, fontSize: 14, color: C.skyInk, paddingVertical: 8 },
 });

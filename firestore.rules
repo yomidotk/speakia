@@ -23,11 +23,15 @@ service cloud.firestore {
       match /attempts/{attemptId} {
         allow read, delete: if isOwner(uid);
         allow create, update: if isOwner(uid)
-          && request.resource.data.keys().hasOnly(['episodeId', 'role', 'stars', 'hints', 'words', 'turns', 'speakingMs', 'finishedAt'])
+          && request.resource.data.keys().hasOnly(['episodeId', 'role', 'stars', 'hints', 'words', 'turns', 'speakingMs', 'finishedAt', 'sessionId', 'report'])
           && request.resource.data.stars is int
           && request.resource.data.stars >= 0 && request.resource.data.stars <= 3
           && request.resource.data.episodeId is string
-          && request.resource.data.episodeId.size() <= 40;
+          && request.resource.data.episodeId.size() <= 40
+          && (!('report' in request.resource.data) || (request.resource.data.report is map
+            && request.resource.data.report.status in ['completed', 'ended_early']))
+          && (!('sessionId' in request.resource.data) || (request.resource.data.sessionId is string
+            && request.resource.data.sessionId.size() <= 100));
       }
     }
 

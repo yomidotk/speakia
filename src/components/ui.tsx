@@ -23,7 +23,7 @@ export function Button({
       // re-measure while the finger is down and can cancel the press (taps "needing" several tries).
       style={({ pressed }) => [
         s.btn,
-        { backgroundColor: bg, borderBottomColor: under, opacity: disabled ? 0.45 : pressed ? 0.88 : 1 },
+        { backgroundColor: bg, borderBottomColor: under, opacity: disabled ? 0.5 : pressed ? 0.88 : 1 },
         variant === 'secondary' && { borderWidth: 2, borderColor: C.skyTint, borderBottomWidth: 2 },
         pressed && { transform: [{ translateY: 2 }] },
         style,
@@ -87,8 +87,8 @@ export function Stars({ count, size = 14 }: { count: number; size?: number }) {
 }
 
 const s = StyleSheet.create({
-  btn: { minHeight: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, borderBottomWidth: 5 },
-  btnText: { fontFamily: F.heavy, fontSize: 17 },
+  btn: { minHeight: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0 },
+  btnText: { fontFamily: F.heavy, fontSize: 15, textAlign: 'center', lineHeight: 21 },
   chip: { borderWidth: 2, borderColor: C.skyTint, backgroundColor: C.white, borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16, minHeight: 44, justifyContent: 'center' },
   chipText: { fontFamily: F.bold, fontSize: 14, color: C.navy },
   card: { backgroundColor: C.white, borderRadius: 22, padding: 16, ...shadow },

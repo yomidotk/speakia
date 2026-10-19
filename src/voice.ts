@@ -32,15 +32,16 @@ async function englishVoices() {
   return voices ?? [];
 }
 
-async function sayOnPhone(who: CastId, text: string, cb: Callbacks, slow: boolean) {
+async function sayOnPhone(who: CastId, text: string, cb: Callbacks, slow: boolean, mine: number, playbackRate = 1) {
   const c = CAST[who];
   const list = await englishVoices();
+  if (mine !== sayCount) return;
   const voice = list.length ? list[c.voice.index % list.length].identifier : undefined;
   Speech.speak(text, {
     language: 'en-US',
     voice,
     pitch: c.voice.pitch,
-    rate: c.voice.rate * (slow ? 0.85 : 1),
+    rate: c.voice.rate * (slow ? 0.85 : 1) * playbackRate,
     onStart: cb.onStart,
     onDone: cb.onDone,
     onStopped: cb.onDone,
@@ -79,7 +80,7 @@ function fetchLine(who: CastId, text: string, slow: boolean): Promise<string | n
 
   const job = (async () => {
     const token = await idToken();
-    if (!token) return null;
+    if (!token) { console.warn("[speakia] DIAGNOSIS: Firebase token missing; voice request was NOT sent to backend."); return null; }
     const t0 = Date.now();
     const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
     if (!res.ok) {
@@ -130,9 +131,11 @@ type Source = string | { uri: string; headers: Record<string, string> };
  * Play audio. Resolves true once it starts (or is stopped first), false if it has not started
  * within `startWithin` ms, in which case it is released and the caller can fall back.
  */
-function play(source: Source, cb: Callbacks, startWithin?: number): Promise<boolean> {
+function play(source: Source, cb: Callbacks, startWithin?: number, playbackRate = 1): Promise<boolean> {
   return new Promise((resolve) => {
     const player = createAudioPlayer(source);
+    player.shouldCorrectPitch = true;
+    player.setPlaybackRate(playbackRate);
     current = player;
     let started = false;
     let finished = false;
@@ -183,7 +186,7 @@ const isSaved = (url: string) =>
  * `live` is for brand-new lines (AI replies): instead of downloading the whole clip first, the
  * audio plays while it is still arriving, so the reply starts sooner.
  */
-export async function say(who: CastId, text: string, cb: Callbacks = {}, slow = false, live = false) {
+export async function say(who: CastId, text: string, cb: Callbacks = {}, slow = false, live = false, playbackRate = 1) {
   stopSpeaking();
   const mine = ++sayCount;
   if (API) {
@@ -201,10 +204,11 @@ export async function say(who: CastId, text: string, cb: Callbacks = {}, slow = 
       const token = await idToken();
       if (token && mine === sayCount) {
         await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-        if (await play({ uri: url, headers: { authorization: `Bearer ${token}` } }, logStart, WAIT_MS)) return;
+        if (mine !== sayCount) return;
+        if (await play({ uri: url, headers: { authorization: `Bearer ${token}` } }, logStart, WAIT_MS, playbackRate)) return;
         if (mine !== sayCount) return;
         console.warn(`[speakia] voice ${who}: live reply did not start in ${WAIT_MS} ms, using phone voice`);
-        await sayOnPhone(who, text, cb, slow);
+        await sayOnPhone(who, text, cb, slow, mine, playbackRate);
         return;
       }
     }
@@ -214,12 +218,13 @@ export async function say(who: CastId, text: string, cb: Callbacks = {}, slow = 
     if (mine !== sayCount) return; // a newer line, or a stop, replaced this one while we waited
     if (uri) {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-      play(uri, logStart);
+      if (mine !== sayCount) return;
+      if (!(await play(uri, logStart, WAIT_MS, playbackRate)) && mine === sayCount) await sayOnPhone(who, text, cb, slow, mine, playbackRate);
       return;
     }
     console.warn(`[speakia] voice ${who}: not ready after ${Date.now() - t0} ms, using phone voice`);
   }
-  await sayOnPhone(who, text, cb, slow);
+  await sayOnPhone(who, text, cb, slow, mine, playbackRate);
 }
 
 export function stopSpeaking() {

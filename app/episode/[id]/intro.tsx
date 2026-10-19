@@ -16,17 +16,18 @@ import { C, F } from '../../../src/theme';
 export default function Intro() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const ep = getEpisode(id);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const artHeight = Math.min(300, Math.max(180, height * 0.32));
 
   const name = useLearnerName();
 
-  // While the learner reads the intro, get the scene and each role's opening line voiced in advance.
+  // While the learner reads the intro, prepare just the first two lines; avoid generating unused scenes.
   useEffect(() => {
     if (!ep || name === null) return;
     const lines = ep.guide
       ? ep.guide.lines.map((l) => ({ who: ep.guide!.partner, text: l.say }))
       : [...ep.scene, ...ep.roles.map((r) => ({ who: r.partner, text: r.opening }))];
-    prepareLines(lines.map((l) => ({ ...l, text: personalise(l.text, name) })));
+    prepareLines(lines.slice(0, 2).map((l) => ({ ...l, text: personalise(l.text, name) })));
   }, [ep, name]);
 
   if (!ep) return null;
@@ -34,8 +35,8 @@ export default function Intro() {
 
   return (
     <View style={s.fill}>
-      <View style={{ height: 360 }}>
-        <Place place={ep.place} width={width} height={360} />
+      <View style={{ height: artHeight }}>
+        <Place place={ep.place} width={width} height={artHeight} />
         <View style={s.cast}>
           {people.map((p) => (
             <Character key={p} who={p} size={150} />
