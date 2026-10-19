@@ -1,5 +1,5 @@
 /** Shared, provider-free practice rules used by the Worker and Expo client. */
-export type Correction = { said: string; better: string; category: 'grammar' | 'vocabulary'; explanation: string; turnId: string; start: number; end: number };
+export type Correction = { said: string; better: string; category: 'grammar' | 'vocabulary'; explanation: string; turnId: string; start: number; end: number; answer?: number };
 export type PracticeTurn = { id: string; text: string; source: 'typed' | 'speech'; recordingMs: number; edited: boolean; corrections: Correction[]; assessed: boolean; objectiveId?: string };
 export type PracticeLine = { from: 'you' | 'partner'; text: string; turnId?: string };
 export type HintReveal = { turnIndex: number; tier: 1 | 2 | 3 };
@@ -20,6 +20,23 @@ export type PracticeReport = {
   recommendation: string; analysisStatus: 'pending' | 'done' | 'failed' | 'unavailable';
 };
 
+/**
+ * Learner-facing feedback text: no internal turn IDs, and no comma/punctuation advice (this is a
+ * speaking app: nobody hears a comma). Returns '' when nothing useful is left.
+ */
+const WRITING_ONLY = /\b(commas?|punctuation|capitali[sz]ation|capital letters?|full stops?|hint tier|tier \d)\b/i;
+export function readable(text: string) {
+  const noIds = text.replace(/\s*\b(?:on|in|from|at)?\s*(?:turn|answer)?\s*req-[\w-]+/gi, '');
+  // drop only the clauses about writing ("...and add a comma before 'or'"), keep the rest
+  const sentences = noIds.split(/(?<=[.!?])\s+/).map((sentence) => {
+    const end = /[.!?]$/.test(sentence) ? sentence.slice(-1) : '';
+    const clauses = (end ? sentence.slice(0, -1) : sentence).split(/\s*;\s*|,?\s+and\s+/i).filter((c) => c.trim() && !WRITING_ONLY.test(c));
+    return clauses.length ? clauses.join(' and ').trim() + end : '';
+  });
+  const out = sentences.filter(Boolean).join(' ').replace(/\s+([.,!?])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+  return /\p{L}/u.test(out) ? out : '';
+}
+
 export const spokenForm = (text: string) => text.normalize('NFKC').toLocaleLowerCase('en').replace(/[^\p{L}\p{N}]/gu, '');
 
 /** Evidence is grounded to the accepted turn. Cosmetic ASR writing changes never count. */
@@ -39,7 +56,7 @@ export function confirmedCorrections(raw: unknown, text: string, turnId: string)
     const key = `${start}|${c.better}|${category}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    found.push({ said: c.said, better: c.better, category, explanation: typeof c.explanation === 'string' ? c.explanation.slice(0, 240) : 'A suggested expression correction.', turnId, start, end: start + c.said.length });
+    found.push({ said: c.said, better: c.better, category, explanation: (typeof c.explanation === 'string' && readable(c.explanation.slice(0, 240))) || 'A more natural way to say it.', turnId, start, end: start + c.said.length });
   }
   return found.slice(0, 4);
 }
@@ -81,7 +98,7 @@ export function measuredReport(s: PracticeSnapshot, measurements: Measurements):
   for (const h of (measurements.hintReveals || []).slice(0, 300)) {
     if (h && typeof h === 'object' && Number.isInteger(h.turnIndex) && h.turnIndex >= 0 && h.turnIndex <= s.turns.length && [1, 2, 3].includes(h.tier) && !events.some((e) => e.turnIndex === h.turnIndex && e.tier === h.tier)) events.push({ turnIndex: h.turnIndex, tier: h.tier });
   }
-  const corrections = s.turns.flatMap((t) => confirmedCorrections(t.corrections, t.text, t.id));
+  const corrections = s.turns.flatMap((t, i) => confirmedCorrections(t.corrections, t.text, t.id).map((c) => ({ ...c, answer: i + 1 })));
   const errorsByCategory: Record<string, number> = {};
   const patterns = new Map<string, { said: string; better: string; occurrences: number }>();
   for (const c of corrections) {

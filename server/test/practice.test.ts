@@ -142,7 +142,7 @@ test('summary failure still returns measured results and report retry is idempot
   const first = await practiceReport(body, user, env) as any;
   const second = await practiceReport(body, user, env) as any;
   assert.deepEqual(first, second); assert.equal(first.report.analysisStatus, 'failed'); assert.equal(first.report.totalMs, 12_000); assert.equal(first.report.turns, 1);
-  mockModel({ strengths: [{ text: 'Unsupported', turnIds: ['fake'] }, { text: 'Closed politely.', turnIds: [r.snapshot.turns[0].id] }], priorities: [], recommendation: 'Try a longer answer.' });
+  mockModel({ strengths: [{ text: 'Unsupported', answers: [99] }, { text: 'Closed politely.', answers: [1] }], priorities: [], recommendation: 'Try a longer answer.' });
   const retry = await practiceReport({ ...body, requestId: rid() }, user, env) as any;
   assert.equal(retry.report.analysisStatus, 'done'); assert.deepEqual(retry.report.strengths, ['Closed politely.']); assert.equal(retry.report.turns, 1);
 });

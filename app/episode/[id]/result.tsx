@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, Label, Title } from '../../../src/components/ui';
 import { getEpisode } from '../../../src/content/episodes';
-import { duration } from '../../../src/practice-core';
+import { duration, readable } from '../../../src/practice-core';
 import { reportPractice, requestId, type ReportRequest } from '../../../src/practice-api';
 import { addAttempt, getAttempts, practiceLocal, savePracticeLocal, type Attempt } from '../../../src/storage';
 import { C, F } from '../../../src/theme';
@@ -73,16 +73,16 @@ export default function Result() {
           <Text style={s.heading}>Expression corrections · {r.errorCount}</Text>
           <Text style={s.small}>Grammar: {r.errorsByCategory.grammar || 0} · Vocabulary: {r.errorsByCategory.vocabulary || 0}. Punctuation and capital letters are excluded.</Text>
           {!r.corrections.length && <Text style={s.tip}>{r.unassessedTurns.length ? 'Some answers were not assessed; no confirmed correction is available.' : 'No expression corrections were recorded. This is not a pronunciation assessment.'}</Text>}
-          {corrections.map((c, i) => <View key={`${c.turnId}-${i}`} style={{ gap: 3 }}><Text style={s.said}>{c.said}</Text><Text style={s.tip}>→ {c.better}</Text><Text style={s.small}>{c.explanation} · Answer {r.objectives.find((o) => o.turnId === c.turnId)?.id || c.turnId.slice(-6)}</Text></View>)}
+          {corrections.map((c, i) => <View key={`${c.turnId}-${i}`} style={{ gap: 3 }}><Text style={s.said}>{c.said}</Text><Text style={s.tip}>→ {c.better}</Text><Text style={s.small}>{readable(c.explanation) || 'A more natural way to say it.'}{c.answer ? ` · Answer ${c.answer}` : ''}</Text></View>)}
           {r.corrections.length > 2 && <Pressable onPress={() => setShowAll((v) => !v)}><Text style={s.link}>{showAll ? 'Show fewer corrections' : `Show all ${r.corrections.length} corrections`}</Text></Pressable>}
           {r.recurringPatterns.filter((p) => p.occurrences > 1).map((p, i) => <Text key={i} style={s.tip}>Repeated {p.occurrences} times: {p.said} → {p.better}</Text>)}
         </Card>
         <Card style={s.card}>
           <Text style={s.heading}>Recommendations</Text>
           {analysing && <Text style={s.tip}>Generating notes from your accepted answers…</Text>}
-          {r.strengths.map((text, i) => <Text key={`s-${i}`} style={s.tip}>Strength: {text}</Text>)}
-          {r.priorities.map((text, i) => <Text key={`p-${i}`} style={s.tip}>Practise: {text}</Text>)}
-          <Text style={s.tip}>{r.recommendation}</Text>
+          {r.strengths.map(readable).filter(Boolean).map((text, i) => <Text key={`s-${i}`} style={s.tip}>✓ {text}</Text>)}
+          {r.priorities.map(readable).filter(Boolean).map((text, i) => <Text key={`p-${i}`} style={s.tip}>→ {text}</Text>)}
+          {!!readable(r.recommendation) && <Text style={s.tip}>{readable(r.recommendation)}</Text>}
           {r.analysisStatus === 'failed' && <Text style={s.small}>AI notes are unavailable. Your measured results and confirmed corrections are saved.</Text>}
           {r.analysisStatus === 'unavailable' && <Text style={s.small}>No AI summary was generated for this session.</Text>}
           {!!error && <Text style={s.small}>{error}</Text>}
