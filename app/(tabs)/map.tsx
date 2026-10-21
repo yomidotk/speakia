@@ -16,12 +16,11 @@ import { EPISODES, Episode } from '../../src/content/episodes';
 import { bestStars, getAttempts, getProfile, Profile } from '../../src/storage';
 import { C, F, shadow } from '../../src/theme';
 
-type Status = 'done' | 'current' | 'locked' | 'soon';
+type Status = 'done' | 'current' | 'open' | 'locked' | 'soon';
 
 // While developing (Expo Go), every written episode can be opened from the map, to test any of them.
 // Release builds (the APK) keep the normal order.
 const OPEN_ALL = __DEV__;
-const openForTesting = (e: Episode, st: Status) => OPEN_ALL && e.playable && st === 'locked';
 
 const ROW = 156;     // vertical distance between stops
 const NODE = 84;     // stop diameter
@@ -66,7 +65,7 @@ export default function MapScreen() {
   const current = EPISODES.find((e) => e.playable && !stars[e.id]) ?? EPISODES.filter((e) => e.playable).pop()!;
   const currentIdx = EPISODES.indexOf(current);
   const status = (e: Episode, i: number): Status =>
-    stars[e.id] ? 'done' : e.id === current.id ? 'current' : !e.playable && i < currentIdx ? 'soon' : 'locked';
+    stars[e.id] ? 'done' : e.id === current.id ? 'current' : OPEN_ALL && e.playable ? 'open' : !e.playable && i < currentIdx ? 'soon' : 'locked';
 
   const selected = EPISODES.find((e) => e.id === selectedId) ?? current;
   const selectedStatus = status(selected, EPISODES.indexOf(selected));
@@ -88,7 +87,7 @@ export default function MapScreen() {
   const tap = (e: Episode, i: number) => {
     setSelectedId(e.id);
     const st = status(e, i);
-    if ((st === 'locked' && !openForTesting(e, st)) || st === 'soon') setSheet(e);
+    if (st === 'locked' || st === 'soon') setSheet(e);
   };
   const go = (e: Episode) => router.push({ pathname: '/episode/[id]/intro', params: { id: e.id } });
 
@@ -256,11 +255,11 @@ function Stop({
 
   const springTo = (v: number) => Animated.spring(press, { toValue: v, friction: 4, tension: 220, useNativeDriver: true }).start();
 
-  const ring = status === 'done' ? C.mint : isCurrent ? C.skyInk : status === 'soon' ? C.sun : C.lockedRing;
-  const statusLine = isCurrent ? ep.focus : status === 'soon' ? 'Coming soon' : 'Locked';
+  const ring = status === 'done' ? C.mint : isCurrent ? C.skyInk : status === 'open' ? C.sky : status === 'soon' ? C.sun : C.lockedRing;
+  const statusLine = isCurrent ? ep.focus : status === 'open' ? 'Open for testing' : status === 'soon' ? 'Coming soon' : 'Locked';
   const a11y =
     `Episode ${ep.level}, ${ep.title}. ` +
-    (status === 'done' ? `Completed, ${stars} of 3 stars.` : isCurrent ? 'Current episode.' : status === 'soon' ? 'Coming soon.' : 'Locked.');
+    (status === 'done' ? `Completed, ${stars} of 3 stars.` : isCurrent ? 'Current episode.' : status === 'open' ? 'Open for testing.' : status === 'soon' ? 'Coming soon.' : 'Locked.');
   const gap = 14;
   const labelW = (labelRight ? width - (x + size / 2) : x - size / 2) - gap - 16;
 
@@ -372,10 +371,9 @@ function Dock({
     Animated.timing(a, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [ep.id, a]);
 
-  const testing = openForTesting(ep, status);
-  const playable = status === 'current' || status === 'done' || testing;
+  const playable = status === 'current' || status === 'done' || status === 'open';
   const line =
-    testing ? 'Open for testing (Expo Go only)'
+    status === 'open' ? 'Open for testing (Expo Go only)'
     : status === 'done' ? null
       : status === 'current' ? `Focus: ${ep.focus.toLowerCase()}`
         : status === 'soon' ? 'Being written'
