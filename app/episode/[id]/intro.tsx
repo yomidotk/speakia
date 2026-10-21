@@ -7,7 +7,7 @@ import Place from '../../../src/components/Place';
 import { BackButton } from '../../../src/components/BackButton';
 import { Body, Button, Label, Title } from '../../../src/components/ui';
 import { CAST } from '../../../src/content/cast';
-import { getEpisode, personalise } from '../../../src/content/episodes';
+import { getEpisode, guideCast, lineParts, personalise } from '../../../src/content/episodes';
 import { useLearnerName } from '../../../src/useLearnerName';
 import { prepareLines } from '../../../src/voice';
 import { C, F } from '../../../src/theme';
@@ -25,13 +25,13 @@ export default function Intro() {
   useEffect(() => {
     if (!ep || name === null) return;
     const lines = ep.guide
-      ? ep.guide.lines.map((l) => ({ who: ep.guide!.partner, text: l.say }))
+      ? ep.guide.lines.flatMap((l) => lineParts(ep.guide!, l))
       : [...ep.scene, ...ep.roles.map((r) => ({ who: r.partner, text: r.opening }))];
     prepareLines(lines.slice(0, 2).map((l) => ({ ...l, text: personalise(l.text, name) })));
   }, [ep, name]);
 
   if (!ep) return null;
-  const people = ep.guide ? [ep.guide.partner] : Array.from(new Set(ep.scene.map((l) => l.who)));
+  const people = ep.guide ? guideCast(ep.guide) : Array.from(new Set(ep.scene.map((l) => l.who)));
 
   return (
     <View style={s.fill}>
@@ -65,7 +65,7 @@ export default function Intro() {
         <View style={s.focus}>
           <Text style={s.focusText}>
             <Text style={{ fontFamily: F.heavy }}>Speaking focus: </Text>
-            {ep.focus.toLowerCase()}.{ep.guide ? ' Sara will talk to you straight away.' : ' First watch what happens, then step in.'}
+            {ep.focus.toLowerCase()}.{ep.guide ? ` ${CAST[ep.guide.partner].shortName} will talk to you straight away.` : ' First watch what happens, then step in.'}
           </Text>
         </View>
         {ep.guide ? (

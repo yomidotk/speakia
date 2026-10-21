@@ -14,16 +14,16 @@ export const STOP_TINT: Record<PlaceId, string> = {
 /** Colourful, background-free icon for a map stop. Drawn on a 100×100 grid. */
 export default function StopIcon({ place, size }: { place: PlaceId; size: number }) {
   if (place === 'cafe') {
-    // Sara and Yacine, side by side
+    // Rayan and Lina, the friends you make here, side by side
     const a = size * 0.5;
     return (
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: size * 0.1 }}>
         <View style={{ flexDirection: 'row' }}>
           <View style={{ borderRadius: a, borderWidth: 3, borderColor: '#fff', marginRight: -a * 0.18, zIndex: 1 }}>
-            <Avatar who="sara" size={a} />
+            <Avatar who="rayan" size={a} />
           </View>
           <View style={{ borderRadius: a, borderWidth: 3, borderColor: '#fff', marginTop: a * 0.12 }}>
-            <Avatar who="yacine" size={a} />
+            <Avatar who="lina" size={a} />
           </View>
         </View>
         <Svg width={size * 0.34} height={size * 0.3} viewBox="0 0 34 30" style={{ position: 'absolute', top: size * 0.04, right: size * 0.02 }}>

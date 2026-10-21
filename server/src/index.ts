@@ -33,6 +33,8 @@ export interface Env {
   FISH_VOICE_YACINE?: string;
   FISH_VOICE_BENALI?: string;
   FISH_VOICE_HADDAD?: string;
+  FISH_VOICE_RAYAN?: string;
+  FISH_VOICE_LINA?: string;
   AUDIO?: KVNamespace; // optional: stores generated lines so each is made only once
 }
 
@@ -275,6 +277,8 @@ const VOICES: Record<string, keyof Env> = {
   yacine: 'FISH_VOICE_YACINE',
   benali: 'FISH_VOICE_BENALI',
   haddad: 'FISH_VOICE_HADDAD',
+  rayan: 'FISH_VOICE_RAYAN',
+  lina: 'FISH_VOICE_LINA',
 };
 
 /**

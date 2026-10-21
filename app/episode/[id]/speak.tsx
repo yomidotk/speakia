@@ -29,7 +29,6 @@ export default function Speak() {
   const ep = getEpisode(id)!;
   const roleIndex = Number(roleParam || 0);
   const role = ep.guide ? guideRole(ep.guide) : ep.roles[roleIndex];
-  const partner = CAST[role.partner];
 
   const key = `active-${ep.id}-${roleIndex}`;
   const [response, setResponse] = useState<PracticeReply | null>(null);
@@ -38,6 +37,7 @@ export default function Speak() {
   const phaseRef = useRef<Phase>('thinking');
   const changePhase = (p: Phase) => { phaseRef.current = p; setPhase(p); };
   const [talking, setTalking] = useState(false);
+  const [speaker, setSpeaker] = useState(role.partner); // who is talking now (scenes can have several people)
   const [typing, setTyping] = useState(isDemo);
   const [draft, setDraft] = useState('');
   const [review, setReview] = useState<{ original: string; ms: number } | null>(null);
@@ -100,7 +100,9 @@ export default function Speak() {
       if (!part) { setTalking(false); if (r.done) void finish(); else changePhase('you'); return; }
       let partDone = false;
       const done = () => { if (partDone || ticket !== epoch.current) return; partDone = true; next(); };
-      void say(role.partner, part.text, { onStart: () => { if (!partDone && ticket === epoch.current) setTalking(true); }, onDone: done }, false, part.live).catch(() => {
+      const who = part.who ?? role.partner;
+      setSpeaker(who);
+      void say(who, part.text, { onStart: () => { if (!partDone && ticket === epoch.current) setTalking(true); }, onDone: done }, false, part.live).catch(() => {
         if (ticket === epoch.current) setError('Voice playback failed. You can read the dialogue or replay it.');
         done();
       });
@@ -211,9 +213,9 @@ export default function Speak() {
   };
   const snapshot = response?.snapshot;
   const times = elapsed(clock.current.startedAt, now, clock.current.pausedMs, clock.current.pauseStarted);
-  const lastPartner = [...(snapshot?.history || [])].reverse().find((l) => l.from === 'partner')?.text || 'You speak first. Welcome the new student.';
+  const lastPartner = [...(snapshot?.history || [])].reverse().find((l) => l.from === 'partner');
   const findings = snapshot?.turns.at(-1)?.corrections || [];
-  const status = phase === 'recording' ? `Recording ${duration(recState.durationMillis)} / 00:45` : phase === 'thinking' ? 'Please wait…' : phase === 'partner' ? `${partner.shortName} is speaking…` : phase === 'paused' ? 'Paused' : phase === 'review' ? 'Review the transcript, then send' : 'Your turn';
+  const status = phase === 'recording' ? `Recording ${duration(recState.durationMillis)} / 00:45` : phase === 'thinking' ? 'Please wait…' : phase === 'partner' ? `${CAST[speaker].shortName} is speaking…` : phase === 'paused' ? 'Paused' : phase === 'review' ? 'Review the transcript, then send' : 'Your turn';
 
   return (
     <View style={s.fill}>
@@ -229,7 +231,7 @@ export default function Speak() {
         <Text style={s.missionText}>{role.mission}</Text>
         {isDemo && <Text style={s.error}>Script preview · AI feedback and goal assessment unavailable</Text>}
         <ScrollView ref={transcript} onContentSizeChange={() => transcript.current?.scrollToEnd({ animated: true })} keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ gap: 12, paddingVertical: 16 }}>
-          {(snapshot?.history || []).map((line, i) => <View key={i} style={[s.msg, line.from === 'you' ? s.mine : s.theirs]}><Text style={s.msgWho}>{line.from === 'you' ? 'YOU' : partner.shortName.toUpperCase()}</Text><Text style={s.msgText}>{line.text}</Text></View>)}
+          {(snapshot?.history || []).map((line, i) => <View key={i} style={[s.msg, line.from === 'you' ? s.mine : s.theirs]}><Text style={s.msgWho}>{line.from === 'you' ? 'YOU' : CAST[line.who ?? role.partner].shortName.toUpperCase()}</Text><Text style={s.msgText}>{line.text}</Text></View>)}
           {findings.length > 0 && <View style={s.hintCard}><Text style={s.hintTitle}>Expression feedback · last accepted answer</Text>{findings.map((c, i) => <Text key={i} style={s.msgText}>{c.said} → {c.better}{'\n'}{c.explanation}</Text>)}</View>}
           {idle >= 8 && phase === 'you' && <Text style={s.missionText}>{idle >= 13 ? 'Need an idea? You can open a hint.' : 'Take your time.'}</Text>}
           {phase === 'you' && response && <View style={s.hintCard}>
@@ -253,7 +255,7 @@ export default function Speak() {
           {phase === 'paused' && <Button label="Resume conversation" onPress={resume} />}
           {phase === 'you' && <View style={s.headerRow}>
             <Button label={typing ? 'Use microphone' : 'Type instead'} variant="secondary" style={{ flex: 1 }} onPress={() => setTyping((v) => !v)} />
-            <Button label="Replay reply" variant="secondary" style={{ flex: 1 }} disabled={!response || !snapshot?.history.some((l) => l.from === 'partner')} onPress={() => response && play({ ...response, speechParts: [{ text: lastPartner }], done: false })} />
+            <Button label="Replay reply" variant="secondary" style={{ flex: 1 }} disabled={!response || !lastPartner} onPress={() => response && lastPartner && play({ ...response, speechParts: [{ text: lastPartner.text, who: lastPartner.who }], done: false })} />
           </View>}
           {phase === 'review' && <Button label="Record again" variant="secondary" onPress={() => { setReview(null); setDraft(''); setTyping(false); pending.current = undefined; changePhase('you'); }} />}
         </SafeAreaView>

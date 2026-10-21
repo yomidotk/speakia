@@ -37,17 +37,17 @@ test('goodbye detection uses whole-message intent', () => {
 });
 test('ordered steps advance once, anchored to evidence, with canonical next question and hints', async () => {
   const s = await start();
-  const calls = mockModel({ reply: 'Thank you. What club would you like?', advance: true, evidence: 'registered online', corrections: [{ said: 'I registered online', better: 'I registered online.', category: 'grammar' }] });
-  const r = await turn(s, 'I registered online last week.');
-  assert.equal(r.snapshot.step, 1); assert.equal(r.snapshot.objectives[0].id, 'registration');
-  assert.match(r.reply, /full name/); assert.doesNotMatch(r.reply, /What club/); assert.equal(r.snapshot.turns[0].corrections.length, 0);
-  assert.equal(r.hints.starter, getEpisode('orientation')!.roles[0].guide!.lines[1].hints!.starter); assert.equal(calls(), 1);
+  const calls = mockModel({ reply: 'Welcome! What club would you like?', advance: true, evidence: 'first day', corrections: [{ said: 'my first day', better: 'my first day.', category: 'grammar' }] });
+  const r = await turn(s, "Yes, I am. It's my first day today.");
+  assert.equal(r.snapshot.step, 1); assert.equal(r.snapshot.objectives[0].id, 'step-1');
+  assert.match(r.reply, /name and your department/); assert.doesNotMatch(r.reply, /What club/); assert.equal(r.snapshot.turns[0].corrections.length, 0);
+  assert.equal(r.hints.starter, getEpisode('orientation')!.guide!.lines[1].hints!.starter); assert.equal(calls(), 1);
 });
 test('off-topic and unresolved follow-ups do not skip scenario questions', async () => {
   const s = await start();
-  mockModel({ reply: 'You can register here.', advance: false, evidence: '', needsClarification: false });
-  const r = await turn(s, 'Where can I register?');
-  assert.equal(r.snapshot.step, 0); assert.match(r.reply, /registered online/);
+  mockModel({ reply: 'The check-in desk is right here.', advance: false, evidence: '', needsClarification: false });
+  const r = await turn(s, 'Where is the check-in desk?');
+  assert.equal(r.snapshot.step, 0); assert.match(r.reply, /first-year student/);
   mockModel({ reply: 'Thanks.', advance: true, evidence: 'imaginary answer' });
   const r2 = await turn(r, 'Tell me about football.'); assert.equal(r2.snapshot.step, 0);
 });
@@ -63,30 +63,37 @@ test('repeated goodbye in one message or explicit stop ends immediately', async 
     const r = await turn(await start(), text); assert.equal(r.done, true); assert.equal(r.snapshot.turns.length, 1);
   }
 });
-test('both roles use correct cast, role-specific hints and learner-first helper opening', async () => {
-  const ep = getEpisode('orientation')!; assert.equal(ep.roles.length, 2); assert.ok(ep.scene.length > 20); assert.equal(ep.guide, undefined);
-  const s = await start(1); assert.equal(s.reply, ''); assert.match(s.hints.idea, /Welcome/);
-  mockModel({ reply: 'I registered online last week.', advance: true, evidence: 'registered' }, (body) => {
-    assert.match(body.messages[0].content, /partner, Yacine/); assert.match(body.messages[0].content, /new student, not the orientation helper/);
-  });
-  const r = await turn(s, 'Welcome! Have you registered online?'); assert.equal(r.snapshot.step, 1); assert.equal(r.reply, 'I registered online last week.');
-  assert.doesNotMatch(r.reply, /full name/); assert.match(r.hints.idea, /full name/);
+test('learner talks as themselves; scenes with several people give each line its own speaker', async () => {
+  for (const id of ['orientation', 'professor', 'friends', 'group-project']) {
+    const ep = getEpisode(id)!; assert.ok(ep.playable && ep.guide); assert.equal(ep.roles.length, 0);
+  }
+  let r = await start(0, 'friends');
+  assert.deepEqual(r.speechParts.map((p) => p.who), ['rayan']); assert.equal(r.snapshot.history[0].who, 'rayan');
+  for (let i = 0; i < 4; i++) {
+    mockModel({ reply: 'Nice!', advance: true, evidence: 'my answer' }, (body) => {
+      assert.match(body.messages[0].content, /Play ONLY Rayan/); assert.match(body.messages[0].content, /talking as themselves/);
+    });
+    r = await turn(r, 'This is my answer.');
+  }
+  // Rayan reacts to the answer he asked for, introduces Lina, then Lina speaks
+  assert.deepEqual(r.speechParts.map((p) => p.who), ['rayan', 'rayan', 'lina']); assert.match(r.speechParts[1].text, /here’s Lina/);
+  assert.deepEqual(r.snapshot.history.slice(-3).map((l) => l.who), ['rayan', 'rayan', 'lina']);
+  mockModel({ reply: 'Oh!', advance: false, evidence: '' }, (body) => assert.match(body.messages[0].content, /Play ONLY Lina/));
+  const again = await turn(r, 'What?');
+  // not answered yet: Lina repeats her question, Rayan doesn't introduce her again
+  assert.deepEqual(again.speechParts.map((p) => p.who), ['lina', 'lina']); assert.doesNotMatch(again.reply, /here’s Lina/);
 });
 test('complete guided scenario covers every configured objective in order', async () => {
-  let r = await start();
-  for (let i = 0; i < 13; i++) {
-    mockModel({ reply: 'All right.', advance: true, evidence: 'My answer', needsClarification: false });
-    r = await turn(r, 'My answer meets the current objective.');
-    assert.equal(r.snapshot.step, i + 1); assert.equal(r.done, i === 12);
+  for (const id of ['orientation', 'professor', 'friends', 'group-project']) {
+    const answers = getEpisode(id)!.guide!.lines.length - 1; // the last line closes the scene
+    let r = await start(0, id);
+    for (let i = 0; i < answers; i++) {
+      mockModel({ reply: 'All right.', advance: true, evidence: 'My answer', needsClarification: false });
+      r = await turn(r, 'My answer meets the current objective.');
+      assert.equal(r.snapshot.step, i + 1); assert.equal(r.done, i === answers - 1);
+    }
+    assert.equal(r.snapshot.completed, true); assert.equal(r.snapshot.objectives.length, answers);
   }
-  assert.equal(r.snapshot.completed, true); assert.equal(r.snapshot.objectives.length, 13); assert.match(r.reply, /cafeteria/);
-});
-test('discussion goal requires two different grounded reasons, never fabricated or nested quotes', async () => {
-  const s = await start(0, 'team-project');
-  mockModel({ reply: 'Go on.', reasonQuotes: ['works on every device', 'every device', 'made up reason'] });
-  const r = await turn(s, 'It works on every device.'); assert.equal(r.done, false);
-  mockModel({ reply: 'Good reasons.', reasonQuotes: ['works on every device', 'easier to test quickly'] });
-  const end = await turn(r, 'It is easier to test quickly.'); assert.equal(end.snapshot.completed, true);
 });
 test('provider failure keeps the previous accepted state and retry does not double count', async () => {
   const s = await start(); const body = { requestId: rid(), stateToken: s.stateToken, text: 'I registered online.', source: 'speech', recordingMs: 4000 };

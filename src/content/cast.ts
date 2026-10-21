@@ -1,5 +1,5 @@
-// The four fixed characters. Colours and features drive the SVG in Character.tsx.
-export type CastId = 'benali' | 'haddad' | 'yacine' | 'sara';
+// The fixed story characters. Colours and features drive the SVG in Character.tsx.
+export type CastId = 'benali' | 'haddad' | 'yacine' | 'sara' | 'rayan' | 'lina';
 
 export type CastMember = {
   id: CastId;
@@ -26,8 +26,8 @@ export type CastMember = {
 export const CAST: Record<CastId, CastMember> = {
   benali: {
     id: 'benali', name: 'Prof. Karim Benali', shortName: 'Prof. Benali',
-    role: 'Computer Science professor',
-    personality: 'calm, precise, always asks "why?"',
+    role: 'Academic Writing professor',
+    personality: 'calm, precise, kind but strict about deadlines',
     tint: '#E6ECFF', dot: '#2F5BDB',
     skin: '#E8B48F', shade: '#CF9670', hair: '#34343F', brow: '#34343F', beard: '#9A9CAE',
     top: '#2F5BDB', lapel: '#2347B5', shirt: '#FFFFFF', hijab: '#000', string: '#000',
@@ -63,5 +63,25 @@ export const CAST: Record<CastId, CastMember> = {
     top: '#4C7DFF', lapel: '#000', shirt: '#000', hijab: '#34C79A', string: '#000',
     features: ['hijab'],
     voice: { pitch: 1.15, rate: 0.97, index: 3 },
+  },
+  rayan: {
+    id: 'rayan', name: 'Rayan', shortName: 'Rayan',
+    role: 'Your classmate in Academic Writing',
+    personality: 'friendly, curious, loves photography and football',
+    tint: '#E6E8F2', dot: '#2F3A66',
+    skin: '#D9A27F', shade: '#BD8461', hair: '#17110E', brow: '#17110E', beard: '#17110E',
+    top: '#2F3A66', lapel: '#000', shirt: '#FFFFFF', hijab: '#000', string: '#000',
+    features: ['sidepart', 'stubble', 'strap', 'shirt', 'neck'],
+    voice: { pitch: 0.95, rate: 1.0, index: 4 },
+  },
+  lina: {
+    id: 'lina', name: 'Lina', shortName: 'Lina',
+    role: 'Your classmate in Academic Writing',
+    personality: 'calm, thoughtful, organised, loves mystery novels',
+    tint: '#EEE8FB', dot: '#8F78C4',
+    skin: '#F3D0B0', shade: '#D9AE8A', hair: '#6B4423', brow: '#6B4423', beard: '#000',
+    top: '#B9A3E3', lapel: '#000', shirt: '#8F78C4', hijab: '#000', string: '#000',
+    features: ['long', 'sweep', 'glasses', 'earrings', 'shirt', 'neck'],
+    voice: { pitch: 1.1, rate: 0.98, index: 5 },
   },
 };

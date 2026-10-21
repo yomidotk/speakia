@@ -9,15 +9,14 @@ Built for Thirduni Cohort 1 (October 2026).
 - Welcome → Sign up / Sign in with Firebase (email and password, real reset-password email) or continue as a guest; progress syncs to Firestore
 - Onboarding: profile (avatar, name, university, year) → major (10 options) → level (A1–C2) or a 4-question speaking placement test → level result
 - Season 1 map (road climbs from level 1 at the bottom to the finale), Seasons, Progress, Me (edit profile, major, goals, level, retake test, privacy, help, log out)
-- Level 4 **Team Project** (library), end to end:
-  - Intro: place and characters
-  - Watch: 8-line scene, each character speaks with its own voice, subtitles, pause, replay, slow speed
-  - Choose role: Sara (defend the web app) or Yacine (defend the mobile app)
-  - Speak: the AI plays the other character, mouth moves while it talks, hint ladder (idea → starter → example), hint offered after 6 s of silence, "type instead", French/Arabic bridge words, 45 s recording cap
-  - Result: stars (= how few hints you needed), words per turn, speaking time, up to two corrections
+- Levels 1–4, the teacher's B1 scenarios, as guided conversations where the learner talks as themselves:
+  1. **Orientation Day** with Sara · 2. **Meeting the Professor** with Prof. Benali · 3. **Making Friends** with Rayan and Lina · 4. **The Group Project** with Rayan and Lina
+  - Intro: place and characters, then straight into the conversation
+  - Speak: characters say the teacher's lines in their own voices; after each answer the AI writes a short reaction to what you actually said, then the next line follows. You only move on when your answer does what the step asks (for example "give a reason"). Hint ladder (idea → starter → example), review the transcript before sending, "type instead", 45 s recording cap
+  - Result: completion, independence stars (how few hints you needed), time, corrections and plain-language feedback
 - **Demo mode**: with no server configured, the partner uses scripted replies and you type your answers
 
-Not done yet: levels 1–3, 5, 6 content; Google sign-in; notifications; photo upload; "say it better" re-recording.
+Not done yet: levels 5 and 6; Google sign-in; notifications; photo upload; "say it better" re-recording.
 
 ## Run the app
 

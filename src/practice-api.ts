@@ -1,8 +1,8 @@
 import { idToken } from './storage';
 import { getEpisode, guideRole, type Hints } from './content/episodes';
-import { goodbyeSignal, measuredReport, type Measurements, type PracticeSnapshot } from './practice-core';
+import { goodbyeSignal, measuredReport, type Measurements, type PracticeSnapshot, type SpeechPart } from './practice-core';
 const API = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
-export type PracticeReply = { stateToken: string; snapshot: PracticeSnapshot; reply: string; speechParts: { text: string; live?: boolean }[]; hints: Hints; done: boolean; stage: string; bridgeWords: { from: string; to: string }[] };
+export type PracticeReply = { stateToken: string; snapshot: PracticeSnapshot; reply: string; speechParts: SpeechPart[]; hints: Hints; done: boolean; stage: string; bridgeWords: { from: string; to: string }[] };
 export type ReportRequest = { requestId: string; stateToken: string; measurements: Measurements };
 export const requestId = () => `req-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 async function post<T>(path: string, body: unknown): Promise<T> {

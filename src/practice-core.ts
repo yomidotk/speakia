@@ -1,7 +1,11 @@
 /** Shared, provider-free practice rules used by the Worker and Expo client. */
+import type { CastId } from './content/cast';
+
 export type Correction = { said: string; better: string; category: 'grammar' | 'vocabulary'; explanation: string; turnId: string; start: number; end: number; answer?: number };
 export type PracticeTurn = { id: string; text: string; source: 'typed' | 'speech'; recordingMs: number; edited: boolean; corrections: Correction[]; assessed: boolean; objectiveId?: string };
-export type PracticeLine = { from: 'you' | 'partner'; text: string; turnId?: string };
+export type PracticeLine = { from: 'you' | 'partner'; text: string; turnId?: string; who?: CastId };
+/** One thing a character says, in order; `live` lines are new (AI-written) rather than scripted. */
+export type SpeechPart = { text: string; live?: boolean; who?: CastId };
 export type HintReveal = { turnIndex: number; tier: 1 | 2 | 3 };
 export type PracticeSnapshot = {
   id: string; episodeId: string; roleIndex: number; startedAt: number; endedAt?: number;

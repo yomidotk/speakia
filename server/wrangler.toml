@@ -17,6 +17,9 @@ FISH_VOICE_SARA = "933563129e564b19a115bedd57b7406a"
 FISH_VOICE_YACINE = "536d3a5e000945adb7038665781a4aca"
 FISH_VOICE_BENALI = "e0e2468ce2d746c1b20a4414435f6f48"
 FISH_VOICE_HADDAD = "9a9cf47702da476aa4629e2506d4a857"
+# Rayan and Lina borrow Yacine's and Sara's voices until they get their own (fish.audio voice IDs).
+FISH_VOICE_RAYAN = "536d3a5e000945adb7038665781a4aca"
+FISH_VOICE_LINA = "933563129e564b19a115bedd57b7406a"
 
 # Secrets are NOT stored here. Set them with:
 #   npx wrangler secret put GROQ_API_KEY

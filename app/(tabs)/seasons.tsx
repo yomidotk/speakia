@@ -37,7 +37,7 @@ export default function Seasons() {
           <Text style={k.title}>Your seasons</Text>
           <Text style={k.sub}>Same friends. New places.</Text>
           <View style={s.cast}>
-            {(['sara', 'yacine', 'benali', 'haddad'] as const).map((w, i) => (
+            {(['sara', 'rayan', 'lina', 'benali'] as const).map((w, i) => (
               <View key={w} style={{ marginLeft: i ? -10 : 0, borderRadius: 24, borderWidth: 3, borderColor: C.cream }}>
                 <Avatar who={w} size={42} />
               </View>
