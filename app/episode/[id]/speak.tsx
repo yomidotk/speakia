@@ -40,7 +40,8 @@ export default function Speak() {
   const changePhase = (p: Phase) => { phaseRef.current = p; setPhase(p); };
   const [talking, setTalking] = useState(false);
   const [speaker, setSpeaker] = useState(role.partner); // who is talking now (scenes can have several people)
-  const people = ep.guide ? guideCast(ep.guide) : [role.partner];
+  const guide = ep.guide ?? role.guide;
+  const people = guide ? guideCast(guide).filter((p) => p !== role.player) : [role.partner];
   const { width, height } = useWindowDimensions();
   const [keyboard, setKeyboard] = useState(false); // the scene steps aside while the learner types
   useEffect(() => {

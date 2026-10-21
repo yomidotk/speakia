@@ -41,7 +41,7 @@ test('ordered steps advance once, anchored to evidence, with canonical next ques
   const r = await turn(s, "Yes, I am. It's my first day today.");
   assert.equal(r.snapshot.step, 1); assert.equal(r.snapshot.objectives[0].id, 'step-1');
   assert.match(r.reply, /name and your department/); assert.doesNotMatch(r.reply, /What club/); assert.equal(r.snapshot.turns[0].corrections.length, 0);
-  assert.equal(r.hints.starter, getEpisode('orientation')!.guide!.lines[1].hints!.starter); assert.equal(calls(), 1);
+  assert.equal(r.hints.starter, getEpisode('orientation')!.roles[0].guide!.lines[1].hints!.starter); assert.equal(calls(), 1);
 });
 test('off-topic and unresolved follow-ups do not skip scenario questions', async () => {
   const s = await start();
@@ -63,29 +63,51 @@ test('repeated goodbye in one message or explicit stop ends immediately', async 
     const r = await turn(await start(), text); assert.equal(r.done, true); assert.equal(r.snapshot.turns.length, 1);
   }
 });
-test('learner talks as themselves; scenes with several people give each line its own speaker', async () => {
+test('every scenario has a listening scene with Yacine’s example answers, then roles', () => {
   for (const id of ['orientation', 'professor', 'friends', 'group-project']) {
-    const ep = getEpisode(id)!; assert.ok(ep.playable && ep.guide); assert.equal(ep.roles.length, 0);
+    const ep = getEpisode(id)!; assert.equal(ep.guide, undefined);
+    assert.ok(ep.scene.some((l) => l.who === 'yacine')); assert.equal(ep.roles[0].player, 'yacine');
+    assert.equal(ep.roles.length, id === 'orientation' || id === 'professor' ? 2 : 1);
   }
+  // the listening scene keeps the teacher's full lines
+  assert.ok(getEpisode('orientation')!.scene.at(-1)!.text.includes('strict about deadlines'));
+});
+test('playing the host: the AI is the new student, never the host', async () => {
+  const s = await start(1); assert.equal(s.reply, ''); assert.match(s.hints.idea, /Welcome/);
+  mockModel({ reply: 'Yes, I am. It’s my first day today.', advance: true, evidence: 'first-year' }, (body) => {
+    const system = body.messages[0].content; const data = JSON.parse(body.messages[1].content);
+    assert.match(system, /You are Yacine/); assert.match(system, /The learner plays Sara/); assert.match(system, /Never welcome them/);
+    assert.equal(data.youAre, 'Yacine'); assert.equal(data.learnerPlays, 'Sara'); assert.ok(data.factsAboutYacine.length > 0); assert.equal(data.facts, undefined);
+  });
+  const r = await turn(s, 'Hi, welcome! Are you a new first-year student?');
+  assert.equal(r.snapshot.step, 1); assert.equal(r.reply, 'Yes, I am. It’s my first day today.'); assert.deepEqual(r.speechParts.map((p) => p.who), ['yacine']);
+  assert.match(r.hints.idea, /name/);
+  mockModel({ reply: 'Fine.', advance: false }, (body) => {
+    const data = JSON.parse(body.messages[1].content);
+    assert.deepEqual(data.history.map((h: any) => h.speaker), ['Sara (the learner)', 'Yacine']); assert.equal(data.learnerLastMessage, 'Great!');
+  });
+  await turn(r, 'Great!');
+});
+test('scenes with several people give each line its own speaker', async () => {
   let r = await start(0, 'friends');
   assert.deepEqual(r.speechParts.map((p) => p.who), ['rayan']); assert.equal(r.snapshot.history[0].who, 'rayan');
   for (let i = 0; i < 4; i++) {
     mockModel({ reply: 'Nice!', advance: true, evidence: 'my answer' }, (body) => {
-      assert.match(body.messages[0].content, /Play ONLY Rayan/); assert.match(body.messages[0].content, /talking as themselves/);
+      assert.match(body.messages[0].content, /You are Rayan/); assert.match(body.messages[0].content, /The learner plays Yacine/);
     });
     r = await turn(r, 'This is my answer.');
   }
   // Rayan reacts to the answer he asked for, introduces Lina, then Lina speaks
   assert.deepEqual(r.speechParts.map((p) => p.who), ['rayan', 'rayan', 'lina']); assert.match(r.speechParts[1].text, /here’s Lina/);
   assert.deepEqual(r.snapshot.history.slice(-3).map((l) => l.who), ['rayan', 'rayan', 'lina']);
-  mockModel({ reply: 'Oh!', advance: false, evidence: '' }, (body) => assert.match(body.messages[0].content, /Play ONLY Lina/));
+  mockModel({ reply: 'Oh!', advance: false, evidence: '' }, (body) => assert.match(body.messages[0].content, /You are Lina/));
   const again = await turn(r, 'What?');
   // not answered yet: Lina repeats her question, Rayan doesn't introduce her again
   assert.deepEqual(again.speechParts.map((p) => p.who), ['lina', 'lina']); assert.doesNotMatch(again.reply, /here’s Lina/);
 });
 test('complete guided scenario covers every configured objective in order', async () => {
   for (const id of ['orientation', 'professor', 'friends', 'group-project']) {
-    const answers = getEpisode(id)!.guide!.lines.length - 1; // the last line closes the scene
+    const answers = getEpisode(id)!.roles[0].guide!.lines.length - 1; // the last line closes the scene
     let r = await start(0, id);
     for (let i = 0; i < answers; i++) {
       mockModel({ reply: 'All right.', advance: true, evidence: 'My answer', needsClarification: false });

@@ -45,6 +45,8 @@ export type GuideLine = {
   id?: string; stage?: string; criterion?: string; terminal?: boolean;
   who?: CastId; before?: { who: CastId; text: string }[];
   react?: string; say: string; hints?: Hints;
+  /** what is said in the listening scene, when the full original line differs from react + say */
+  listen?: string;
 };
 export type Guide = { mode?: 'scripted' | 'respond'; partner: CastId; mission: string; goal: string; facts: string[]; lines: GuideLine[] };
 
@@ -91,9 +93,9 @@ export const EPISODES: Episode[] = [
   {
     id: 'orientation', season: 1, level: 1, title: 'Orientation Day', place: 'gate', placeName: 'Campus gate',
     time: 'Sunday · 08:30', focus: 'Talking about yourself and asking for information',
-    summary: 'Your first day on campus. Sara welcomes you at the check-in desk and helps you get ready.',
+    summary: 'The first day on campus. Sara welcomes Yacine at the check-in desk and helps him get ready.',
     setting:
-      'Orientation Day at a university in Algeria. Sara, a friendly student volunteer, is at the check-in desk welcoming new students. The learner is a new first-year student arriving for their first day.',
+      'Orientation Day at a university in Algeria. Sara, a friendly student volunteer, is at the check-in desk welcoming new students. Yacine is a new first-year student arriving for his first day.',
     scene: [], roles: [], maxTurns: 11, playable: true,
     guide: {
       partner: 'sara',
@@ -113,7 +115,7 @@ export const EPISODES: Episode[] = [
           hints: { idea: 'Say yes, and that it’s your first day.', starter: 'Yes, I am. It’s my…', example: 'Yes, I am. It’s my first day today.' } },
         { react: 'Great!', say: 'Can I have your name and your department, please?',
           criterion: 'Give their name and their department or subject.',
-          hints: { idea: 'Give your name, then your subject: I’m studying…', starter: 'Sure, my name is…', example: 'Sure, my name is Amina, and I’m studying computer science.' } },
+          hints: { idea: 'Give your name, then your subject: I’m studying…', starter: 'Sure, my name is…', example: 'Sure, my name is Yacine, and I’m in the Computer Science department.' } },
         { stage: 'Getting to know each other', say: 'Nice to meet you! How did you get to campus this morning?',
           criterion: 'Say how they travelled to campus, in the past tense.',
           hints: { idea: 'Tell Sara what happened, in the past: I came… / It took…', starter: 'I came by…', example: 'I came by tram. It took about twenty minutes.' } },
@@ -145,16 +147,16 @@ export const EPISODES: Episode[] = [
           hints: { idea: 'Ask one last question, or thank Sara.', starter: 'Yes, who…', example: 'Yes, who teaches Academic Writing?' } },
         // The teacher's answer about the Academic Writing professor is in `facts`: the AI says it
         // when the learner asks, and the line works for "No, that's everything" too.
-        { say: 'Enjoy your first day!' },
+        { say: 'Enjoy your first day!', listen: 'The Academic Writing professor is friendly, but he’s strict about deadlines, so go to his office hours if you have questions. Enjoy your first day!' },
       ]),
     },
   },
   {
     id: 'professor', season: 1, level: 2, title: 'Meeting the Professor', place: 'office', placeName: 'Professor’s office',
     time: 'Wednesday · 14:00', focus: 'Polite questions and asking for clarification',
-    summary: 'You visit Prof. Benali in his office hours to ask about your first Academic Writing assignment.',
+    summary: 'Yacine visits Prof. Benali in his office hours to ask about the first Academic Writing assignment.',
     setting:
-      'Office hours at a university in Algeria. Prof. Benali teaches Academic Writing. The learner is a new student in his class who knocks on his office door to ask about the first assignment.',
+      'Office hours at a university in Algeria. Prof. Benali teaches Academic Writing. Yacine, a new student in his class, knocks on his office door to ask about the first assignment.',
     scene: [], roles: [], maxTurns: 11, playable: true,
     guide: {
       partner: 'benali',
@@ -183,7 +185,7 @@ export const EPISODES: Episode[] = [
           criterion: 'Ask about the format or the deadline, or confirm they understood.',
           hints: { idea: 'Ask about the format or the deadline: Should I…? / Is it possible to…?', starter: 'Should I…', example: 'Should I write it by hand or type it?' } },
         // "Typed, please, and email is fine." answers one particular question, so it is in `facts`.
-        { say: 'Have you already got an idea?',
+        { say: 'Have you already got an idea?', listen: 'Typed, please, and email is fine. Have you already got an idea?',
           criterion: 'Share an idea for the paragraph, or say not yet and ask for an example.',
           hints: { idea: 'Say your idea and why, or ask for an example.', starter: 'I’m thinking of writing about…', example: 'I’m thinking of writing about the beach near my town, because I spent every summer there.' } },
         { stage: 'Talking about writing', say: 'Tell me, how do you feel about writing in English?',
@@ -212,9 +214,9 @@ export const EPISODES: Episode[] = [
   {
     id: 'friends', season: 1, level: 3, title: 'Making Friends', place: 'cafe', placeName: 'Campus café',
     time: 'Wednesday · 16:00', focus: 'Keeping a conversation going',
-    summary: 'After class, Rayan sits next to you in the café. Then Lina joins you.',
+    summary: 'After class, Rayan sits next to Yacine in the café. Then Lina joins them.',
     setting:
-      'The campus café at a university in Algeria, after the Academic Writing class. Rayan and Lina are classmates of the learner; they meet for the first time.',
+      'The campus café at a university in Algeria, after the Academic Writing class. Yacine, Rayan and Lina are classmates who meet for the first time.',
     scene: [], roles: [], maxTurns: 12, playable: true,
     guide: {
       partner: 'rayan',
@@ -230,7 +232,7 @@ export const EPISODES: Episode[] = [
       lines: staged([
         { stage: 'Meeting Rayan', say: 'Hey, you’re in the Academic Writing class, aren’t you? I’m Rayan. Is this seat free?',
           criterion: 'Answer about the seat, and greet Rayan or introduce themselves.',
-          hints: { idea: 'Say yes and introduce yourself.', starter: 'Yes, sure, sit down! I’m…', example: 'Yes, sure, sit down! I’m Amina. Nice to meet you.' } },
+          hints: { idea: 'Say yes and introduce yourself.', starter: 'Yes, sure, sit down! I’m…', example: 'Yes, sure, sit down! I’m Yacine. Nice to meet you.' } },
         { say: 'So, what did you think of the class?',
           criterion: 'Give an opinion about the class.',
           hints: { idea: 'Give your opinion and a reason: I liked it, but… / It seems…', starter: 'I liked it, but…', example: 'I liked it, but the assignment looks difficult.' } },
@@ -276,9 +278,9 @@ export const EPISODES: Episode[] = [
   {
     id: 'group-project', season: 1, level: 4, title: 'The Group Project', place: 'library', placeName: 'Library',
     time: 'Thursday · 10:00', focus: 'Suggesting, agreeing and disagreeing',
-    summary: 'You, Rayan and Lina meet in the library to plan your first group presentation.',
+    summary: 'Yacine, Rayan and Lina meet in the library to plan their first group presentation.',
     setting:
-      'The university library in Algeria. The learner, Rayan and Lina are a group for an Academic Writing project: a five-minute presentation in two weeks.',
+      'The university library in Algeria. Yacine, Rayan and Lina are a group for an Academic Writing project: a five-minute presentation in two weeks.',
     scene: [], roles: [], maxTurns: 10, playable: true,
     guide: {
       partner: 'lina',
@@ -338,6 +340,181 @@ export const EPISODES: Episode[] = [
     setting: '', scene: [], roles: [], maxTurns: 3, playable: false,
   },
 ];
+
+// ---------- listen, then choose a role ----------
+// Every scenario first plays as a scene: the characters say the teacher's lines and Yacine, a new
+// student, gives the teacher's example answers. Then the learner chooses who to be:
+//   · Yacine: the characters talk to them, as in the script (the AI plays everyone else)
+//   · the host (Sara, Prof. Benali), in the one-to-one scenes: the learner leads the conversation
+//     and the AI plays Yacine, answering from what we know about him.
+const STUDENT: CastId = 'yacine';
+
+type Practice = {
+  examples: string[]; // Yacine's answer to each line (not to the closing line)
+  host?: { player: CastId; mission: string; goal: string; aboutStudent: string[]; tasks: [string, string][] };
+};
+
+const PRACTICE: Record<string, Practice> = {
+  orientation: {
+    examples: [
+      'Yes, I am. It’s my first day today.',
+      'Sure, my name is Yacine, and I’m in the Computer Science department.',
+      'I came by tram. It took about twenty minutes.',
+      'I chose it because I’ve always loved computers.',
+      'I’m staying in the residence, so it’s my first time away from home.',
+      'Sorry, did you say B12? Which building is that in?',
+      'How do I activate it? Can someone help me with that?',
+      'I’m excited but a bit nervous, because everything is new.',
+      'I’d prefer the campus tour, because I don’t know where anything is yet.',
+      'I love photography, so maybe the photography club.',
+      'Yes, who teaches Academic Writing?',
+    ],
+    host: {
+      player: 'sara', mission: 'Be Sara. Welcome Yacine, the new student, and help him get ready for the day.',
+      goal: 'welcome a new student, ask about them, and explain the practical information and today’s programme, in order',
+      aboutStudent: [
+        'Yacine is a new first-year student in the Computer Science department; today is his first day.',
+        'He came by tram this morning; it took about twenty minutes.',
+        'He chose computer science because he has always loved computers.',
+        'He is staying in the student residence: it is his first time away from home.',
+        'He is excited but a bit nervous, because everything is new.',
+        'He would prefer the campus tour, because he doesn’t know where anything is yet. He loves photography.',
+        'He doesn’t know anything about the campus yet: he can only learn it from Sara.',
+      ],
+      tasks: [
+        ['Welcome the student and ask if he is a new first-year student.', 'Hi, welcome to…'],
+        ['Ask for his name and his department.', 'Can I have…'],
+        ['Ask how he got to campus this morning.', 'How did you…'],
+        ['Ask why he chose his subject.', 'Why did you…'],
+        ['Ask if he lives in the student residence or at home.', 'Are you living…'],
+        ['Give him the welcome pack and say when and where his first class is.', 'Here’s your welcome pack…'],
+        ['Say where B12 is, and that he must activate his student email today.', 'B12 is in…'],
+        ['Tell him where the IT desk is, then ask how he feels about university.', 'Just go to…'],
+        ['Reassure him, explain the welcome talk, and ask: campus tour or library visit?', 'That’s completely normal…'],
+        ['Mention the clubs fair and ask what he does in his free time.', 'There’s also a clubs fair…'],
+        ['Ask if he has any more questions.', 'Any more questions…'],
+        ['Answer his last question and wish him a good first day.', 'The Academic Writing professor…'],
+      ],
+    },
+  },
+  professor: {
+    examples: [
+      'Good afternoon, Professor. I’m in your Academic Writing class. Do you have a few minutes?',
+      'Yes, I’m sorry about that. I was at the IT desk and the queue was very long.',
+      'Sorry, could you explain what you mean by “a place that is important to me”?',
+      'Should I write it by hand or type it?',
+      'I’m thinking of writing about the beach near my town, because I spent every summer there.',
+      'I enjoy it, but I make a lot of grammar mistakes.',
+      'We wrote an essay every month, and the teacher corrected it.',
+      'Yes, please. That would be really helpful. Can I send it by email?',
+      'I’d like to become a teacher, so writing is important for me.',
+      'No, that’s everything. So the deadline is Monday at midnight, right?',
+      'I will. Thank you very much for your time, Professor. See you on Monday.',
+    ],
+    host: {
+      player: 'benali', mission: 'Be Prof. Benali. Explain the first assignment to Yacine and give him advice.',
+      goal: 'welcome a student in your office hours, explain the assignment and its deadline, and give advice, in order',
+      aboutStudent: [
+        'Yacine is a new student in Prof. Benali’s Academic Writing class, visiting his office hours to ask about the assignment.',
+        'He arrived late on Monday because the queue at the IT desk was very long.',
+        'He would like to write about the beach near his town, where he spent every summer.',
+        'He enjoys writing in English but makes a lot of grammar mistakes.',
+        'At secondary school he wrote an essay every month, and the teacher corrected it.',
+        'After his degree he would like to become a teacher.',
+        'He doesn’t know the assignment details: he can only learn them from the professor.',
+      ],
+      tasks: [
+        ['Invite the student in and ask how you can help.', 'Come in…'],
+        ['Say you think he arrived late on Monday.', 'You’re one of the new students…'],
+        ['Explain the first assignment.', 'So, the first assignment is…'],
+        ['Give examples of places, and the deadline.', 'It can be anywhere…'],
+        ['Answer his question about the format, then ask if he has an idea.', 'Typed, please…'],
+        ['Ask how he feels about writing in English.', 'Tell me, how do you…'],
+        ['Ask what he did at secondary school to practise writing.', 'What did you do…'],
+        ['Give him advice and offer to check his plan before Friday.', 'My advice is…'],
+        ['Ask what he would like to do after his degree.', 'By the way…'],
+        ['Ask if there is anything else.', 'Is there…'],
+        ['Confirm, give your office hours and mention the group project.', 'That’s right…'],
+        ['Say goodbye.', 'You’re welcome…'],
+      ],
+    },
+  },
+  friends: {
+    examples: [
+      'Yes, sure, sit down! I’m Yacine. Nice to meet you.',
+      'I liked it, but the assignment looks difficult.',
+      'Not yet, but I’ve got an idea. How long have you been into photography?',
+      'I play football with my friends on Fridays.',
+      'Not at all! We’re talking about hobbies. What do you like doing?',
+      'That’s not boring! What kind of books do you like?',
+      'Not really. I prefer watching films.',
+      'No, I’ve never been. What’s it like?',
+      'Not many, but I met Sara on Orientation Day.',
+      'Good idea! Why don’t we go to the old town on Saturday?',
+      'Let’s meet at the tram stop at ten.',
+      'That’s great news! When is the deadline?',
+    ],
+  },
+  'group-project': {
+    examples: [
+      'How about longer library opening hours? Lots of students need a quiet place to study.',
+      'I see your point, but most students care more about studying.',
+      'The library, because we can find the opening hours online and compare them with other universities.',
+      'Why don’t we make a short online survey?',
+      'I can take care of the survey. I’ve made one before.',
+      'Yes, that sounds fair.',
+      'Don’t worry. Why don’t you do it on Monday instead?',
+      'Yes, I’ll send it to you on Wednesday evening.',
+      'So, we’ve decided to talk about longer library opening hours. I’m doing the survey, Rayan is doing the research and Lina is writing the introduction and the conclusion.',
+      'How about next Tuesday after class, here in the library?',
+    ],
+  },
+};
+
+/** The listening scene: the script with its original wording, and Yacine's example answers. */
+function sceneFor(g: Guide, examples: string[]) {
+  const out: { who: CastId; text: string }[] = [];
+  const add = (who: CastId, text: string) => {
+    const last = out[out.length - 1];
+    if (last?.who === who) last.text += ` ${text}`;
+    else out.push({ who, text });
+  };
+  g.lines.forEach((l, i) => {
+    const parts = lineParts(g, l);
+    if (l.react && !l.listen) add(parts[0].who, l.react); // said by whoever speaks first, as in the script
+    for (const p of l.before ?? []) add(p.who, p.text);
+    add(speakerOf(g, l), l.listen ?? l.say);
+    if (!l.terminal && examples[i]) add(STUDENT, examples[i]);
+  });
+  return out;
+}
+
+/** The host's side of a one-to-one scenario: the learner leads, the AI answers as Yacine. */
+function hostGuide(g: Guide, host: NonNullable<Practice['host']>): Guide {
+  return {
+    mode: 'respond', partner: STUDENT, mission: host.mission, goal: host.goal, facts: host.aboutStudent,
+    lines: g.lines.map((l, i) => {
+      const [task, starter] = host.tasks[i];
+      const original = `${l.react && !l.listen ? `${l.react} ` : ''}${l.listen ?? l.say}`;
+      return { id: l.id, stage: l.stage, terminal: l.terminal, criterion: task, say: task, hints: { idea: task, starter, example: original } };
+    }),
+  };
+}
+
+for (const ep of EPISODES) {
+  const practice = PRACTICE[ep.id];
+  if (!ep.guide || !practice) continue;
+  const g = ep.guide;
+  ep.scene = sceneFor(g, practice.examples);
+  ep.roles = [
+    { ...guideRole(g), player: STUDENT, guide: g },
+    ...(practice.host
+      ? [{ ...guideRole(hostGuide(g, practice.host)), player: practice.host.player, firstSpeaker: 'learner' as const, opening: '', guide: hostGuide(g, practice.host) }]
+      : []),
+  ];
+  // an episode-level guide skips listening and choosing a role; these go through both
+  delete ep.guide;
+}
 
 /**
  * Lines can say {name}: the characters know the learner by name once they have met.
