@@ -231,3 +231,13 @@ test('the AI is told not to use the learner’s name before hearing it', async (
   mockModel({ reply: 'Welcome!', advance: true, evidence: 'new student' }, (body) => assert.match(body.messages[0].content, /never call the learner by name/));
   await turn(await start(), "Yes, I'm a new student.");
 });
+
+test('a half answer gets a follow-up for the missing part, not the whole question again', async () => {
+  let r = await start();
+  mockModel({ reply: 'Great!', advance: true, evidence: 'new student' });
+  r = await turn(r, "Yes, I'm a new student.");
+  mockModel({ reply: 'Nice to meet you, Noor! And which department are you in?', advance: false, evidence: '' });
+  const half = await turn(r, 'My name is Noor.');
+  assert.equal(half.snapshot.step, 1); assert.equal(half.reply, 'Nice to meet you, Noor! And which department are you in?');
+  assert.doesNotMatch(half.reply, /Can I have your name/);
+});

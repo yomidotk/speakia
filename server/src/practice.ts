@@ -153,7 +153,7 @@ export async function practiceTurn(body: Record<string, unknown>, uid: string, e
         ? 'This is a discussion. A goal is achieved only when the learner has provided at least two different relevant reasons. Return reasonQuotes with exact evidence from accepted learner turns; do not end based on turn count alone.'
         : leads
           ? `The learner, as ${learner}, leads this conversation and follows the steps in learnerTask; those are ${learner}'s job, not yours. You answer as ${partner.shortName}: reply to what they actually said, using only the facts about you. Never welcome them, never give information that ${learner} is supposed to give, and never ask ${learner}'s questions. You may ask one short, natural question back (for example to check something you didn't understand). Set advance=true only when their message does learnerTask.task; put the exact words that do it in evidence.`
-          : `This is an ordered guided lesson. Set advance=true only when the learner's message does learnerTask.task; put the exact words that do it in evidence. A question alone does not complete the task unless the task says so; if they asked a relevant question, answer it from the facts. Your reply is only a short reaction or answer. Do NOT ask a new question: the app says the next scripted line right after your reply. Use needsClarification=true ONLY if you genuinely need them to clarify what they said; then your reply may ask ONE clarification.`;
+          : `This is an ordered guided lesson. Set advance=true only when the learner's message does learnerTask.task; put the exact words that do it in evidence. A question alone does not complete the task unless the task says so; if they asked a relevant question, answer it from the facts. If the message does the task, your reply is only a short reaction or answer and must NOT ask a question: the app says the next scripted line right after your reply. If it doesn't do the task yet (for example part of it is missing, like a department after a name), react to what they said and end with ONE short question, in your own words, asking only for what is still missing. Use needsClarification=true ONLY if you genuinely couldn't understand what they said.`;
       const system = `${who} Reply naturally to the learner's last message, at their level. Stay within the scene and the facts. Relevant unexpected answers and questions are welcome; briefly bring off-topic messages back to the task. Do not repeat answered questions. Use 1–2 short sentences, normally under 40 words. Unknown facts stay unknown: say you're not sure. Never invent campus details or contact information.\n${LANGUAGE_POLICY}\n${task}\nReturn JSON: {reply:string, advance:boolean, evidence:string, needsClarification:boolean, reasonQuotes:string[], bridgeWords:[{from:string,to:string}], hints:{idea:string,starter:string,example:string}, corrections:[{said:string,better:string,category:string,explanation:string}]}. Hints are for the learner's next message as ${learner}: an idea, a sentence starter and an example; they are not required wording.`;
       // the history says who said what, so the model never mixes up who is who
       const history = state.history.slice(-24).map((l) => ({ speaker: l.from === 'you' ? `${learner} (the learner)` : CAST[l.who ?? role.partner].shortName, text: l.text }));
@@ -178,10 +178,12 @@ export async function practiceTurn(body: Record<string, unknown>, uid: string, e
         }
         const next = guide.lines[state.step];
         if (guide.mode !== 'respond') {
-          reply = out.needsClarification === true ? reply : removeQuestions(reply);
+          // Done: a short reaction, then the next scripted line. Not done yet: the reaction asks for
+          // what is missing in its own words; the scripted question is repeated only if it doesn't.
+          const asks = !advance && reply.includes('?');
+          if (advance && out.needsClarification !== true) reply = removeQuestions(reply);
           parts = reply ? [{ who: speaker, text: reply, live: true }] : [];
-          // a new step brings everything said for it; a repeated step only repeats its question
-          if (next && out.needsClarification !== true) parts.push(...(advance ? lineParts(guide, next) : [{ who: speakerOf(guide, next), text: next.say }]));
+          if (next && out.needsClarification !== true && !asks) parts.push(...(advance ? lineParts(guide, next) : [{ who: speakerOf(guide, next), text: next.say }]));
           if (!next || next.terminal) { state.completed = true; state.endedAt = Date.now(); state.endReason = 'objectives_completed'; }
         } else {
           parts = reply ? [{ who: speaker, text: reply, live: true }] : [];
