@@ -18,9 +18,9 @@ import { C, F, shadow } from '../../src/theme';
 
 type Status = 'done' | 'current' | 'open' | 'locked' | 'soon';
 
-// While developing (Expo Go), every written episode can be opened from the map, to test any of them.
-// Release builds (the APK) keep the normal order.
-const OPEN_ALL = __DEV__;
+// Episodes open in order: finish one to unlock the next. To test any episode while developing,
+// set this to __DEV__ (development builds only; the APK always keeps the order).
+const OPEN_ALL = false;
 
 const ROW = 156;     // vertical distance between stops
 const NODE = 84;     // stop diameter
