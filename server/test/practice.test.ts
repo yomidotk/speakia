@@ -206,3 +206,10 @@ test('Worker routes authenticate Firebase tokens and return structured practice 
   const badReport = await worker.fetch(new Request('https://test/practice/report', { method: 'POST', headers, body: JSON.stringify({ requestId: rid(), stateToken: state.stateToken }) }), fullEnv, ctx);
   assert.equal(badReport.status, 400); assert.match((await badReport.json() as any).error, /Measured session/);
 });
+
+test('transcripts drop Whisper echoing its prompt and parts it marks as not speech', async () => {
+  const { heardText } = await import('../src/index');
+  assert.equal(heardText({ text: ' A university student speaking English, sometimes using a French or Arabic word.' }), '');
+  assert.equal(heardText({ segments: [{ text: 'Hi, welcome!', no_speech_prob: 0.05 }, { text: ' Thank you.', no_speech_prob: 0.9 }] }), 'Hi, welcome!');
+  assert.equal(heardText({ text: 'I came by tram.' }), 'I came by tram.');
+});

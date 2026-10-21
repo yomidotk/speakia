@@ -129,9 +129,9 @@ async function transcribe(req: Request, env: Env) {
   const out = new FormData();
   out.append('file', file, name);
   out.append('model', env.STT_MODEL || 'whisper-large-v3-turbo');
-  out.append('response_format', 'json');
+  out.append('response_format', 'verbose_json'); // per-segment "is this speech?" scores
   // A short prompt helps Whisper keep English and not "translate" French words students mix in.
-  out.append('prompt', 'A university student speaking English, sometimes using a French or Arabic word.');
+  out.append('prompt', WHISPER_PROMPT);
 
   const res = await fetch(`${GROQ}/audio/transcriptions`, {
     method: 'POST',
@@ -143,8 +143,27 @@ async function transcribe(req: Request, env: Env) {
     console.log(`whisper failed ${res.status}: ${detail.slice(0, 300)} (file ${(file as File).type || '?'}, ${(file as File).size ?? '?'} bytes)`);
     return json({ error: `Transcription failed: ${detail}` }, 502);
   }
-  const data = (await res.json()) as { text?: string };
-  return json({ text: (data.text ?? '').trim() });
+  const data = (await res.json()) as { text?: string; segments?: { text?: string; no_speech_prob?: number }[] };
+  return json({ text: heardText(data) });
+}
+
+const WHISPER_PROMPT = 'A university student speaking English, sometimes using a French or Arabic word.';
+const words = (t: string) => t.toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * What the learner actually said. On a silent or noisy recording Whisper can make text up, often by
+ * repeating the prompt back; those parts are dropped, so the app says it heard nothing.
+ */
+export function heardText(data: { text?: string; segments?: { text?: string; no_speech_prob?: number }[] }) {
+  const segments = data.segments?.length ? data.segments : [{ text: data.text ?? '' }];
+  const prompt = words(WHISPER_PROMPT);
+  const kept = segments.filter((seg) => {
+    const t = words(seg.text ?? '');
+    if (!t) return false;
+    if ((seg.no_speech_prob ?? 0) > 0.6) return false; // Whisper itself thinks there was no speech
+    return !prompt.includes(t) && !t.includes('university student speaking english') && !t.includes('french or arabic word');
+  });
+  return kept.map((seg) => (seg.text ?? '').trim()).join(' ').trim();
 }
 
 function systemPrompt(raw: TurnRequest) {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -40,6 +40,11 @@ export default function PlacementTest() {
   const elapsed = rec.durationMillis ?? 0;
 
   const pulse = useRef(new Animated.Value(0)).current;
+  // made once: a new interpolation on every render makes react-native-web re-render in a loop
+  const ring = useMemo(() => ({
+    opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
+    scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.7] }),
+  }), [pulse]);
   useEffect(() => {
     if (phase !== 'recording') return;
     const loop = Animated.loop(Animated.timing(pulse, { toValue: 1, duration: 1200, easing: Easing.out(Easing.ease), useNativeDriver: true }));
@@ -220,8 +225,8 @@ export default function PlacementTest() {
             {phase === 'recording' && (
               <Animated.View
                 style={[s.ring, {
-                  opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
-                  transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.7] }) }],
+                  opacity: ring.opacity,
+                  transform: [{ scale: ring.scale }],
                 }]}
               />
             )}

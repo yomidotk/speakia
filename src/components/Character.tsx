@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, View, ViewStyle } from 'react-native';
 import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import { LookSource, getLook } from '../content/avatars';
@@ -31,7 +31,8 @@ export default function Character({ who, size = 160, talking = false, happy = fa
     loop.start();
     return () => loop.stop();
   }, [breath]);
-  const translateY = breath.interpolate({ inputRange: [0, 1], outputRange: [0, -3] });
+  // made once: a new interpolation on every render makes react-native-web re-render in a loop
+  const translateY = useMemo(() => breath.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }), [breath]);
 
   // blinking at a different rhythm per character
   const [blink, setBlink] = useState(false);

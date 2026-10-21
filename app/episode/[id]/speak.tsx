@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, Animated, AppState, Easing, Keyboard, KeyboardAvoidingView, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View, useWindowDimensions,
@@ -303,6 +303,11 @@ export default function Speak() {
 
 function MicButton({ phase, onPress }: { phase: Phase; onPress?: () => void }) {
   const pulse = useRef(new Animated.Value(0)).current;
+  // made once: a new interpolation on every render makes react-native-web re-render in a loop
+  const ring = useMemo(() => ({
+    opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
+    scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] }),
+  }), [pulse]);
   const active = phase === 'you' || phase === 'recording';
   useEffect(() => {
     if (!active) return;
@@ -322,8 +327,8 @@ function MicButton({ phase, onPress }: { phase: Phase; onPress?: () => void }) {
           <Animated.View
             style={{
               position: 'absolute', width: 84, height: 84, borderRadius: 42, backgroundColor: bg,
-              opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
-              transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] }) }],
+              opacity: ring.opacity,
+              transform: [{ scale: ring.scale }],
             }}
           />
         )}
