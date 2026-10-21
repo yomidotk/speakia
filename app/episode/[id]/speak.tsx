@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, AppState, Easing, KeyboardAvoidingView, Pressable, ScrollView,
-  StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Animated, AppState, Easing, Keyboard, KeyboardAvoidingView, Pressable, ScrollView,
+  StyleSheet, Text, TextInput, View, useWindowDimensions,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
+import Character from '../../../src/components/Character';
+import Place from '../../../src/components/Place';
 import { Button, Label } from '../../../src/components/ui';
 import { Sheet } from '../../../src/components/kit';
 import { BackButton } from '../../../src/components/BackButton';
 import { CAST } from '../../../src/content/cast';
-import { getEpisode, guideRole } from '../../../src/content/episodes';
+import { getEpisode, guideCast, guideRole } from '../../../src/content/episodes';
 import { isDemo, transcribe } from '../../../src/api';
 import { answerPractice, requestId, startPractice, type PracticeReply } from '../../../src/practice-api';
 import { duration, elapsed, measuredReport, revealHint, type Measurements } from '../../../src/practice-core';
@@ -38,6 +40,15 @@ export default function Speak() {
   const changePhase = (p: Phase) => { phaseRef.current = p; setPhase(p); };
   const [talking, setTalking] = useState(false);
   const [speaker, setSpeaker] = useState(role.partner); // who is talking now (scenes can have several people)
+  const people = ep.guide ? guideCast(ep.guide) : [role.partner];
+  const { width, height } = useWindowDimensions();
+  const [keyboard, setKeyboard] = useState(false); // the scene steps aside while the learner types
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboard(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+  const sceneHeight = keyboard ? 0 : Math.round(Math.max(150, Math.min(250, height * 0.27)));
   const [typing, setTyping] = useState(isDemo);
   const [draft, setDraft] = useState('');
   const [review, setReview] = useState<{ original: string; ms: number } | null>(null);
@@ -227,7 +238,22 @@ export default function Speak() {
         </View>
         <View style={s.timerRow}><Text style={s.status}>Total {duration(times.totalMs)}</Text><Text style={s.missionText}>Active {duration(times.activeMs)}</Text><Text style={s.missionText}>{snapshot?.turns.length || 0} answers</Text></View>
       </SafeAreaView>
-      <KeyboardAvoidingView style={s.sheet} behavior="padding">
+      {sceneHeight > 0 && (
+        <View style={{ height: sceneHeight, overflow: 'hidden' }}>
+          <Place place={ep.place} width={width} height={sceneHeight} />
+          <View style={s.cast}>
+            {people.map((p) => {
+              const active = p === speaker;
+              return (
+                <View key={p} style={{ transform: [{ scale: active ? 1 : 0.86 }, { translateY: active ? 0 : 6 }] }}>
+                  <Character who={p} size={Math.min(160, sceneHeight * 0.8)} talking={active && talking} />
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
+      <KeyboardAvoidingView style={[s.sheet, sceneHeight > 0 && { marginTop: -22 }]} behavior="padding">
         <Text style={s.missionText}>{role.mission}</Text>
         {isDemo && <Text style={s.error}>Script preview · AI feedback and goal assessment unavailable</Text>}
         <ScrollView ref={transcript} onContentSizeChange={() => transcript.current?.scrollToEnd({ animated: true })} keyboardShouldPersistTaps="handled" style={{ flex: 1 }} contentContainerStyle={{ gap: 12, paddingVertical: 16 }}>
@@ -327,7 +353,7 @@ const s = StyleSheet.create({
   top: { position: 'absolute', top: 0, left: 20, right: 20, flexDirection: 'row', alignItems: 'center', gap: 12 },
   progress: { flex: 1, flexDirection: 'row', gap: 4, backgroundColor: C.white, borderRadius: 999, padding: 6, marginTop: 8 },
   seg: { flex: 1, height: 8, borderRadius: 4 },
-  partner: { position: 'absolute', left: 4, bottom: 6 },
+  cast: { position: 'absolute', left: 0, right: 0, bottom: 14, flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-end' },
   partnerBubble: {
     position: 'absolute', left: 170, right: 16, top: 112, backgroundColor: C.white, borderRadius: 20, borderBottomLeftRadius: 6, padding: 12,
     shadowColor: '#1E2440', shadowOpacity: 0.15, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 4,
