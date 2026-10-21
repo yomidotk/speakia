@@ -47,6 +47,8 @@ export type GuideLine = {
   react?: string; say: string; hints?: Hints;
   /** what is said in the listening scene, when the full original line differs from react + say */
   listen?: string;
+  /** the teacher's expected answers: examples of answers that do `criterion`, never the only ones */
+  expected?: string[];
 };
 export type Guide = { mode?: 'scripted' | 'respond'; partner: CastId; mission: string; goal: string; facts: string[]; lines: GuideLine[] };
 
@@ -473,6 +475,65 @@ const PRACTICE: Record<string, Practice> = {
   },
 };
 
+/**
+ * The teacher's "Expected" answers for each line, in order (the closing line has none). The AI gets
+ * them as examples of answers that do the step; anything with the same purpose counts too.
+ */
+const EXPECTED: Record<string, string[][]> = {
+  orientation: [
+    ['Yes, I am. It’s my first day today.', 'Yes, I’ve just started my degree.'],
+    ['Sure, my name is… and I’m in the… department.', 'My name’s… I’m studying…'],
+    ['I came by tram. It took about twenty minutes.', 'My father drove me, but the traffic was terrible.'],
+    ['I chose it because I’ve always loved…', 'I want to become a…, so it’s the right subject for me.'],
+    ['I’m staying in the residence, so it’s my first time away from home.', 'I live with my family, about half an hour from here.'],
+    ['Sorry, did you say B12? Which building is that in?', 'What time did you say?'],
+    ['How do I activate it?', 'Can someone help me with that? I’m not very good with computers.'],
+    ['I’m excited but a bit nervous, because everything is new.', 'I’m worried about the workload.'],
+    ['I’d prefer the campus tour, because I don’t know where anything is yet.', 'I think I’ll visit the library, because I want to borrow some books.'],
+    ['I love photography, so maybe the photography club.', 'I used to play basketball at school. Is there a team here?'],
+    ['Yes, who teaches Academic Writing?', 'No, I think that’s everything. Thanks a lot!'],
+  ],
+  professor: [
+    ['Good afternoon, Professor. I’m in your Academic Writing class. Do you have a few minutes?', 'Sorry to disturb you. I was wondering if I could ask you about the assignment.'],
+    ['Yes, I’m sorry about that. I was at the IT desk and the queue was very long.', 'Yes, I got lost and couldn’t find Room B12.'],
+    ['Sorry, could you explain what you mean by “a place that is important to me”?', 'How many words did you say?'],
+    ['Should I write it by hand or type it?', 'Is it possible to send it on the online platform instead?'],
+    ['I’m thinking of writing about the beach near my town, because I spent every summer there.', 'Not yet. Could you give me an example?'],
+    ['I enjoy it, but I make a lot of grammar mistakes.', 'To be honest, I find it difficult to organise my ideas.'],
+    ['We wrote an essay every month, and the teacher corrected it.', 'Not much. We mostly did grammar exercises.'],
+    ['Yes, please. That would be really helpful. Can I send it by email?', 'Thank you, but I think I’ll be fine.'],
+    ['I’d like to become a teacher, so writing is important for me.', 'I’m not sure yet, but I might work as a translator.'],
+    ['No, that’s everything. So the deadline is Monday at midnight, right?', 'Just one more thing: when are your office hours?'],
+    ['I will. Thank you very much for your time, Professor.', 'Thanks a lot. See you on Monday.'],
+  ],
+  friends: [
+    ['Yes, sure, sit down! I’m… Nice to meet you.', 'Yes, it is. I recognise you. You sat at the front, right?'],
+    ['I liked it, but the assignment looks difficult.', 'It was interesting. The professor seems nice but strict.'],
+    ['Not yet, but I’ve got an idea. How long have you been into photography?', 'Really? Can I see some of your photos?'],
+    ['I play football with my friends on Fridays.', 'I’m really into music. I listen to podcasts and play the guitar.'],
+    ['Not at all! We’re talking about hobbies. What do you like doing?', 'No, please join us. I’m…'],
+    ['That’s not boring! What kind of books do you like?', 'Me too! Which series are you watching at the moment?'],
+    ['Not really. I prefer watching films.', 'Yes, I read in English sometimes, but it’s slow.'],
+    ['Yes, I’ve been there a few times. The market is great.', 'No, I’ve never been. What’s it like?'],
+    ['Not many, but I met Sara on Orientation Day.', 'Not really. You two are the first!'],
+    ['Good idea! Why don’t we go to the old town on Saturday?', 'How about going to the beach on Sunday?'],
+    ['Let’s meet at the tram stop at ten.', 'How about eleven, in front of the main gate?'],
+    ['That’s great news! When is the deadline?', 'Really? What’s the topic?'],
+  ],
+  'group-project': [
+    ['How about longer library opening hours? Lots of students need a quiet place to study.', 'I think we should talk about transport, because the buses are always full.'],
+    ['I see your point, but most students care more about studying.', 'That’s true, I agree. We could combine the two ideas.'],
+    ['The cafeteria, because we can ask students and see the queues ourselves.', 'The library, because we can find the opening hours online and compare them with other universities.'],
+    ['Why don’t we make a short online survey?', 'We could interview ten students in the cafeteria.'],
+    ['I’ll do the slides, because I’m good at design.', 'I can take care of the survey. I’ve made one before.'],
+    ['Yes, that sounds fair.', 'Actually, could I do the research instead? I’m not very good with slides.'],
+    ['Don’t worry. Why don’t you do it on Monday instead?', 'No problem. We can swap: I’ll do it on Saturday, and you can help with the slides.'],
+    ['Yes, I’ll send it to you on Wednesday evening.', 'It’s a bit tight, but I’ll try my best.'],
+    ['So, our topic is… I’m doing…, Rayan is doing… and Lina is writing…', 'We’ve decided to…, and the survey will be ready on Wednesday.'],
+    ['How about next Tuesday after class, here in the library?', 'Let’s meet on Thursday, so we can check the survey results.'],
+  ],
+};
+
 /** The listening scene: the script with its original wording, and Yacine's example answers. */
 function sceneFor(g: Guide, examples: string[]) {
   const out: { who: CastId; text: string }[] = [];
@@ -498,7 +559,7 @@ function hostGuide(g: Guide, host: NonNullable<Practice['host']>): Guide {
     lines: g.lines.map((l, i) => {
       const [task, starter] = host.tasks[i];
       const original = `${l.react && !l.listen ? `${l.react} ` : ''}${l.listen ?? l.say}`;
-      return { id: l.id, stage: l.stage, terminal: l.terminal, criterion: task, say: task, hints: { idea: task, starter, example: original } };
+      return { id: l.id, stage: l.stage, terminal: l.terminal, criterion: task, say: task, expected: [original], hints: { idea: task, starter, example: original } };
     }),
   };
 }
@@ -507,6 +568,7 @@ for (const ep of EPISODES) {
   const practice = PRACTICE[ep.id];
   if (!ep.guide || !practice) continue;
   const g = ep.guide;
+  g.lines.forEach((l, i) => { l.expected ??= EXPECTED[ep.id]?.[i]; });
   ep.scene = sceneFor(g, practice.examples);
   ep.roles = [
     { ...guideRole(g), player: STUDENT, guide: g },

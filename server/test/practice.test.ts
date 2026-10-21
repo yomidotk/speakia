@@ -249,3 +249,23 @@ test('steps are judged on meaning: the AI is told grammar never blocks moving on
   mockModel({ reply: 'Oh, nice!', advance: true, evidence: 'My parents drive me' }, (body) => assert.match(body.messages[0].content, /grammar or vocabulary mistakes never stop advance=true/));
   await turn(await start(), 'My parents drive me to the campus today.');
 });
+
+test('every step that needs an answer carries the teacher’s expected answers, and the AI gets them as examples', async () => {
+  for (const id of ['orientation', 'professor', 'friends', 'group-project']) {
+    for (const role of getEpisode(id)!.roles) {
+      const lines = role.guide!.lines;
+      lines.slice(0, -1).forEach((l) => assert.ok(l.expected?.length, `${id} ${role.player} ${l.id}`));
+    }
+  }
+  mockModel({ reply: 'Oh, nice!', advance: true, evidence: 'My parents drove me' }, (body) => {
+    const data = JSON.parse(body.messages[1].content);
+    assert.deepEqual(data.learnerTask.exampleAnswers, getEpisode('orientation')!.roles[0].guide!.lines[0].expected);
+    assert.match(body.messages[0].content, /never the only ones/); assert.ok(data.learnerMission);
+  });
+  await turn(await start(), 'Yes, I am new.');
+});
+test('an off-topic message never moves on, and the question comes back', async () => {
+  mockModel({ reply: 'Ha, let’s keep practising: we’re still checking you in!', advance: true, offTopic: true, evidence: 'pizza' });
+  const r = await turn(await start(), 'Do you like pizza?');
+  assert.equal(r.snapshot.step, 0); assert.match(r.reply, /keep practising/); assert.match(r.reply, /first-year student/);
+});
