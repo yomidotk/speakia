@@ -5,6 +5,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "node --import tsx --test test/*.test.ts",
+    "try": "tsx scripts/try-scenarios.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
