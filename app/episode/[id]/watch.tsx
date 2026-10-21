@@ -86,7 +86,7 @@ export default function Watch() {
       <ScrollView contentContainerStyle={s.body}>
         <View style={[s.scene, { height: sceneHeight }]}>
           <Place place={ep.place} width={Math.max(1, width - 40)} height={sceneHeight} />
-          <View style={s.cast}>{people.map((p) => <View key={p} style={{ transform: [{ scale: line.who === p ? 1 : 0.86 }, { translateY: line.who === p ? 0 : 6 }] }}><Character who={p} size={Math.min(126, (width - 64) / people.length)} talking={line.who === p && talking} /></View>)}</View>
+          <View style={s.cast}>{people.map((p) => <View key={p} style={{ transform: [{ scale: line.who === p ? 1 : 0.86 }, { translateY: line.who === p ? 0 : 6 }] }}><Character who={p} size={Math.max(48, Math.min(126, (width - 64) / people.length))} talking={line.who === p && talking} /></View>)}</View>
         </View>
         <View style={s.progress}><Text style={s.caption}>{ended ? 'Listening complete' : `Line ${index + 1} of ${scene.length}`}</Text><Text style={s.caption}>{ended ? 'Ready to choose a role' : playing ? talking ? 'Playing' : 'Preparing audio…' : 'Ready when you are'}</Text></View>
         <StepBar value={ended ? 1 : index / scene.length} />
