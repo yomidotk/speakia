@@ -241,3 +241,11 @@ test('a half answer gets a follow-up for the missing part, not the whole questio
   assert.equal(half.snapshot.step, 1); assert.equal(half.reply, 'Nice to meet you, Noor! And which department are you in?');
   assert.doesNotMatch(half.reply, /Can I have your name/);
 });
+
+test('steps are judged on meaning: the AI is told grammar never blocks moving on', async () => {
+  for (const id of ['orientation', 'professor', 'friends', 'group-project']) {
+    for (const l of getEpisode(id)!.roles[0].guide!.lines) assert.doesNotMatch(l.criterion ?? '', /tense|present perfect/i);
+  }
+  mockModel({ reply: 'Oh, nice!', advance: true, evidence: 'My parents drive me' }, (body) => assert.match(body.messages[0].content, /grammar or vocabulary mistakes never stop advance=true/));
+  await turn(await start(), 'My parents drive me to the campus today.');
+});

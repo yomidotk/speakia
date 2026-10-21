@@ -84,6 +84,8 @@ function staged(lines: GuideLine[]): GuideLine[] {
   });
 }
 
+// Criteria are about meaning only: a grammar mistake never stops the learner moving on (the grammar
+// target lives in the hints, and mistakes show up as corrections).
 // The four Season 1 scenarios were written by the team's English teacher ("Speakia B1 scenarios").
 // The wording is theirs, with small changes so every line still works whatever the learner
 // answered: a reaction to one particular answer ("Great!", "That's right.") moves into `react`
@@ -117,7 +119,7 @@ export const EPISODES: Episode[] = [
           criterion: 'Give their name and their department or subject.',
           hints: { idea: 'Give your name, then your subject: I’m studying…', starter: 'Sure, my name is…', example: 'Sure, my name is Yacine, and I’m in the Computer Science department.' } },
         { stage: 'Getting to know each other', react: 'Nice to meet you!', say: 'How did you get to campus this morning?',
-          criterion: 'Say how they travelled to campus, in the past tense.',
+          criterion: 'Say how they got to campus this morning.',
           hints: { idea: 'Tell Sara what happened, in the past: I came… / It took…', starter: 'I came by…', example: 'I came by tram. It took about twenty minutes.' } },
         { say: 'And why did you choose your subject?',
           criterion: 'Give a reason for choosing their subject.',
@@ -176,7 +178,7 @@ export const EPISODES: Episode[] = [
           criterion: 'Greet the professor politely and say why they came.',
           hints: { idea: 'Be polite and formal: Good afternoon… / Sorry to disturb you…', starter: 'Good afternoon, Professor. I’m…', example: 'Good afternoon, Professor. I’m in your Academic Writing class. Do you have a few minutes?' } },
         { react: 'Of course, have a seat.', say: 'You’re one of the new students, aren’t you? I think you arrived late on Monday.',
-          criterion: 'Apologise or explain why they were late, in the past tense.',
+          criterion: 'Apologise or explain why they were late.',
           hints: { idea: 'Explain what happened, in the past: I was… / I couldn’t…', starter: 'Yes, I’m sorry about that. I…', example: 'Yes, I’m sorry about that. I got lost and couldn’t find Room B12.' } },
         { stage: 'The assignment', react: 'Don’t worry.', say: 'So, the first assignment is a paragraph of about 250 words describing a place that is important to you.',
           criterion: 'Ask a clarification question about the assignment, or confirm they understood. A relevant question satisfies this.',
@@ -192,13 +194,13 @@ export const EPISODES: Episode[] = [
           criterion: 'Say how they feel about writing in English.',
           hints: { idea: 'Be honest: I enjoy it, but… / To be honest, I find it…', starter: 'I enjoy it, but…', example: 'I enjoy it, but I make a lot of grammar mistakes.' } },
         { react: 'That’s very common.', say: 'What did you do at secondary school to practise writing?',
-          criterion: 'Describe how they practised writing at school, in the past tense.',
+          criterion: 'Say how they practised writing at school (or that they didn’t much).',
           hints: { idea: 'Talk about the past: We wrote… / We mostly did…', starter: 'We wrote…', example: 'We wrote an essay every month, and the teacher corrected it.' } },
         { react: 'I see.', say: 'My advice is to write a short plan before you start. Would you like me to check your plan before Friday?',
           criterion: 'Accept or politely refuse the offer.',
           hints: { idea: 'Accept or refuse politely.', starter: 'Yes, please. That would be…', example: 'Yes, please. That would be really helpful. Can I send it by email?' } },
         { stage: 'An unexpected question', say: 'By the way, what would you like to do after your degree?',
-          criterion: 'Talk about their future plans, for example with “I’d like to” or “I might”.',
+          criterion: 'Say what they would like to do after their degree, or that they are not sure yet.',
           hints: { idea: 'Talk about the future: I’d like to… / I might…', starter: 'I’d like to…', example: 'I’d like to become a teacher, so writing is important for me.' } },
         { stage: 'Closing', react: 'Excellent.', say: 'Is there anything else?',
           criterion: 'Check a detail, ask a last question, or say there is nothing else.',
@@ -250,19 +252,19 @@ export const EPISODES: Episode[] = [
           hints: { idea: 'Welcome Lina and tell her what you’re talking about.', starter: 'Not at all! We’re talking about…', example: 'Not at all! We’re talking about hobbies. What do you like doing?' } },
         // "Mine are quite boring" became "My hobbies are…" so it also works if hobbies weren't mentioned.
         { who: 'lina', say: 'My hobbies are quite boring. I mostly read and watch series.',
-          criterion: 'React and ask Lina a follow-up question (What kind…? / Which…?).',
+          criterion: 'React to Lina’s hobbies, or ask her a follow-up question about them.',
           hints: { idea: 'Ask a “What kind…?” or “Which…?” question.', starter: 'That’s not boring! What kind of…', example: 'That’s not boring! What kind of books do you like?' } },
         { who: 'lina', say: 'I love mystery novels. I’ve just finished one about a detective in Istanbul. Do you read much?',
           criterion: 'Say whether they read much, with a detail.',
           hints: { idea: 'Answer and add a detail.', starter: 'Not really. I prefer…', example: 'Yes, I read in English sometimes, but it’s slow.' } },
         { stage: 'Experiences', who: 'lina', say: 'Have you ever been to the old town? I went last weekend and it was amazing.',
-          criterion: 'Answer with the present perfect (I’ve been… / I’ve never been…), or ask what it is like.',
+          criterion: 'Say whether they have been to the old town, or ask what it is like.',
           hints: { idea: 'Have you ever…? → Yes, I’ve… / No, I’ve never…', starter: 'No, I’ve never been…', example: 'No, I’ve never been. What’s it like?' } },
         { react: 'It’s perfect for photos!', say: 'And have you made many friends here yet?',
           criterion: 'Say whether they have made friends yet.',
           hints: { idea: 'Answer honestly: Not many, but… / Not really…', starter: 'Not many, but I met…', example: 'Not many, but I met Sara on Orientation Day.' } },
         { stage: 'Making plans', say: 'We should go somewhere together this weekend!',
-          criterion: 'Make a suggestion (Why don’t we…? / How about…?).',
+          criterion: 'Suggest something to do or a place to go together.',
           hints: { idea: 'Make a suggestion: Why don’t we…? / How about …ing?', starter: 'Good idea! Why don’t we…', example: 'Good idea! Why don’t we go to the old town on Saturday?' } },
         { who: 'lina', say: 'Saturday works for me. What time should we meet, and where?',
           criterion: 'Suggest a time and a place to meet.',
