@@ -18,6 +18,11 @@ import { C, F, shadow } from '../../src/theme';
 
 type Status = 'done' | 'current' | 'locked' | 'soon';
 
+// While developing (Expo Go), every written episode can be opened from the map, to test any of them.
+// Release builds (the APK) keep the normal order.
+const OPEN_ALL = __DEV__;
+const openForTesting = (e: Episode, st: Status) => OPEN_ALL && e.playable && st === 'locked';
+
 const ROW = 156;     // vertical distance between stops
 const NODE = 84;     // stop diameter
 const BIG = 104;     // current stop diameter
@@ -83,7 +88,7 @@ export default function MapScreen() {
   const tap = (e: Episode, i: number) => {
     setSelectedId(e.id);
     const st = status(e, i);
-    if (st === 'locked' || st === 'soon') setSheet(e);
+    if ((st === 'locked' && !openForTesting(e, st)) || st === 'soon') setSheet(e);
   };
   const go = (e: Episode) => router.push({ pathname: '/episode/[id]/intro', params: { id: e.id } });
 
@@ -367,9 +372,11 @@ function Dock({
     Animated.timing(a, { toValue: 1, duration: 180, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [ep.id, a]);
 
-  const playable = status === 'current' || status === 'done';
+  const testing = openForTesting(ep, status);
+  const playable = status === 'current' || status === 'done' || testing;
   const line =
-    status === 'done' ? null
+    testing ? 'Open for testing (Expo Go only)'
+    : status === 'done' ? null
       : status === 'current' ? `Focus: ${ep.focus.toLowerCase()}`
         : status === 'soon' ? 'Being written'
           : `Finish ${current.title} to unlock`;
