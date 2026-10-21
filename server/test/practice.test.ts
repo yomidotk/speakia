@@ -226,3 +226,8 @@ test('evidence counts despite small copying changes, but not when it was never s
   r = await turn(r, said);
   assert.equal(r.snapshot.step, 1); assert.match(r.reply, /name and your department/);
 });
+
+test('the AI is told not to use the learner’s name before hearing it', async () => {
+  mockModel({ reply: 'Welcome!', advance: true, evidence: 'new student' }, (body) => assert.match(body.messages[0].content, /never call the learner by name/));
+  await turn(await start(), "Yes, I'm a new student.");
+});

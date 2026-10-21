@@ -148,7 +148,7 @@ export async function practiceTurn(body: Record<string, unknown>, uid: string, e
       const others = guide ? guideCast(guide).filter((id) => id !== speaker && id !== role.player).map((id) => `${CAST[id].shortName} (${CAST[id].personality})`) : [];
       const learner = role.player ? CAST[role.player].shortName : 'themselves';
       const leads = guide?.mode === 'respond'; // the learner plays the host and leads; the AI answers
-      const who = `You are ${partner.shortName} (${partner.personality}), and ONLY ${partner.shortName}. The learner plays ${learner} and is talking to you.${others.length ? ` Also in the scene: ${others.join(', ')}; never speak for them.` : ''} Never say ${learner}'s lines and never do ${learner}'s job.`;
+      const who = `You are ${partner.shortName} (${partner.personality}), and ONLY ${partner.shortName}. The learner plays ${learner} and is talking to you.${others.length ? ` Also in the scene: ${others.join(', ')}; never speak for them.` : ''} Never say ${learner}'s lines and never do ${learner}'s job. You only know someone's name once they have said it in this conversation (or were introduced): until then, never call the learner by name.`;
       const task = !guide
         ? 'This is a discussion. A goal is achieved only when the learner has provided at least two different relevant reasons. Return reasonQuotes with exact evidence from accepted learner turns; do not end based on turn count alone.'
         : leads
