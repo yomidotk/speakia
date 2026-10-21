@@ -5,7 +5,7 @@ import { Button } from '../src/components/ui';
 import { Divider, Field, GoogleButton, Heading, Screen, Sheet, TopBar, k } from '../src/components/kit';
 import { resetPassword, signIn } from '../src/storage';
 import { C, F } from '../src/theme';
-import { Dialog } from '../src/dialog';
+import { useGoogleSignIn } from '../src/useGoogleSignIn';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -25,6 +25,7 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [forgot, setForgot] = useState(false);
   const pass = useRef<TextInput>(null);
+  const google = useGoogleSignIn(setError);
 
   const emailErr = touched.email && !EMAIL.test(email.trim()) ? 'Enter a valid email address.' : '';
   const passErr = touched.password && !password ? 'Enter your password.' : '';
@@ -95,7 +96,7 @@ export default function SignIn() {
       )}
       <Button label={busy ? 'Signing in…' : 'Sign in'} onPress={submit} loading={busy} />
       <Divider label="or" />
-      <GoogleButton onPress={() => Dialog.alert('Coming soon', 'Google sign-in is coming soon. For now, use your email.')} />
+      <GoogleButton onPress={google.start} busy={google.busy} />
 
       <ResetSheet visible={forgot} initialEmail={email.trim()} onClose={() => setForgot(false)} />
     </Screen>

@@ -188,11 +188,11 @@ export function Divider({ label }: { label: string }) {
   );
 }
 
-export function GoogleButton({ onPress }: { onPress: () => void }) {
+export function GoogleButton({ onPress, busy = false }: { onPress: () => void; busy?: boolean }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [k.google, pressed && { backgroundColor: C.skyTint }]}>
+    <Pressable onPress={onPress} disabled={busy} accessibilityRole="button" accessibilityState={{ busy }} style={({ pressed }) => [k.google, (pressed || busy) && { backgroundColor: C.skyTint }]}>
       <Text style={k.g}>G</Text>
-      <Text style={k.googleText}>Continue with Google</Text>
+      <Text style={k.googleText}>{busy ? 'Connecting to Google…' : 'Continue with Google'}</Text>
     </Pressable>
   );
 }

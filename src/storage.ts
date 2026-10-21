@@ -1,8 +1,10 @@
 import type { PracticeReport } from './practice-core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import {
-  EmailAuthProvider, createUserWithEmailAndPassword, deleteUser, linkWithCredential, sendPasswordResetEmail,
-  signInAnonymously, signInWithEmailAndPassword, signOut as fbSignOut,
+  EmailAuthProvider, GoogleAuthProvider, createUserWithEmailAndPassword, deleteUser, getAdditionalUserInfo,
+  linkWithCredential, linkWithPopup, sendPasswordResetEmail, signInAnonymously, signInWithCredential,
+  signInWithEmailAndPassword, signInWithPopup, signOut as fbSignOut, type UserCredential,
 } from 'firebase/auth';
 import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AvatarSpec, toAvatarSpec } from './content/avatars';
@@ -224,6 +226,108 @@ export async function signIn(email: string, password: string): Promise<{ result:
   }
 }
 
+// ---------- Google ----------
+
+export type GoogleResult = AuthResult | 'cancelled' | 'needs-app';
+
+type GoogleSignInLib = typeof import('@react-native-google-signin/google-signin');
+
+/**
+ * The native Google sign-in module, or null where it isn't built in (Expo Go). It is loaded only
+ * when needed, because loading it in Expo Go throws.
+ */
+function googleLib(): GoogleSignInLib | null {
+  if (Platform.OS === 'web') return null;
+  try {
+    return require('@react-native-google-signin/google-signin') as GoogleSignInLib;
+  } catch {
+    return null;
+  }
+}
+
+/** Google's account picker on the phone; resolves to an ID token for Firebase. */
+async function googleIdToken(): Promise<string | 'cancelled' | 'needs-app' | 'unavailable'> {
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  if (!webClientId) {
+    console.warn('[speakia] Google sign-in: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not set');
+    return 'unavailable';
+  }
+  const lib = googleLib();
+  if (!lib) return 'needs-app';
+  const { GoogleSignin, isErrorWithCode, statusCodes } = lib;
+  GoogleSignin.configure({ webClientId });
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const res = await GoogleSignin.signIn();
+    if (res.type !== 'success') return 'cancelled';
+    return res.data.idToken ?? 'unavailable';
+  } catch (e) {
+    const code = isErrorWithCode(e) ? e.code : '';
+    if (code === statusCodes.SIGN_IN_CANCELLED || code === statusCodes.IN_PROGRESS) return 'cancelled';
+    // DEVELOPER_ERROR (10): this build's SHA-1 isn't registered for the Android app in Firebase
+    console.warn('[speakia] Google sign-in failed:', code || e);
+    return 'unavailable';
+  }
+}
+
+/**
+ * Continue with Google. A guest is upgraded in place (their progress stays), unless that Google
+ * account already exists, in which case they sign in to it. A brand-new Google account keeps what is
+ * on the phone; an existing one loads its saved profile and progress.
+ */
+export async function signInWithGoogle(): Promise<{ result: GoogleResult; profile: Profile | null }> {
+  if (!auth || !firebaseReady) return { result: 'unavailable', profile: null };
+  const current = user();
+  const guest = current?.isAnonymous ? current : null;
+  try {
+    let cred: UserCredential;
+    if (Platform.OS === 'web') {
+      const provider = new GoogleAuthProvider();
+      if (!guest) cred = await signInWithPopup(auth, provider);
+      else {
+        try {
+          cred = await linkWithPopup(guest, provider);
+        } catch (e) {
+          const existing = GoogleAuthProvider.credentialFromError(e as Parameters<typeof GoogleAuthProvider.credentialFromError>[0]);
+          if ((e as { code?: string })?.code !== 'auth/credential-already-in-use' || !existing) throw e;
+          cred = await signInWithCredential(auth, existing);
+        }
+      }
+    } else {
+      const token = await googleIdToken();
+      if (token === 'cancelled' || token === 'needs-app' || token === 'unavailable') return { result: token, profile: null };
+      const credential = GoogleAuthProvider.credential(token);
+      if (!guest) cred = await signInWithCredential(auth, credential);
+      else {
+        try {
+          cred = await linkWithCredential(guest, credential);
+        } catch (e) {
+          if ((e as { code?: string })?.code !== 'auth/credential-already-in-use') throw e;
+          cred = await signInWithCredential(auth, credential);
+        }
+      }
+    }
+    await AsyncStorage.removeItem(GUEST);
+    // upgraded guest, or a brand-new account: what is on the phone becomes the account's
+    if (cred.user.uid === guest?.uid || getAdditionalUserInfo(cred)?.isNewUser) {
+      cloud(pushToCloud);
+      return { result: 'ok', profile: await getProfile() };
+    }
+    let profile: Profile | null = null;
+    try {
+      profile = await pullFromCloud(cred.user.uid);
+    } catch (e) {
+      console.warn('[speakia] could not load saved progress:', (e as { code?: string })?.code ?? e);
+      profile = await getProfile();
+    }
+    return { result: 'ok', profile };
+  } catch (e) {
+    const code = (e as { code?: string })?.code;
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return { result: 'cancelled', profile: null };
+    return { result: authError(e), profile: null };
+  }
+}
+
 /** Always resolves the same way whether or not the account exists, so emails cannot be probed. */
 export async function resetPassword(email: string): Promise<'sent' | 'network' | 'invalid-email'> {
   if (!auth) return 'network';
@@ -251,6 +355,7 @@ export async function startGuest() {
 export async function signOut() {
   await clearPracticeLocal();
   if (auth) await fbSignOut(auth).catch(() => {});
+  await googleLib()?.GoogleSignin.signOut().catch(() => {}); // next time, Google asks which account
   await AsyncStorage.multiRemove([PROFILE, ATTEMPTS, GUEST]);
 }
 

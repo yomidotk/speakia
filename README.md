@@ -53,6 +53,12 @@ Accounts use Firebase Authentication; each learner's profile and finished episod
    - **Firestore Database → Create database** (production mode), then **Rules**: paste `firestore.rules` and **Publish**.
 2. Restart `npx expo start`.
 
+**Google sign-in** (optional):
+- **Authentication → Sign-in method → Google**: enable it, then copy **Web SDK configuration → Web client ID** into `.env` as `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+- **Project settings → Your apps → Add app → Android**: package `com.speakia.app`, plus the **SHA-1** of the EAS signing key (`npx eas-cli credentials -p android`, or expo.dev → project → Credentials). No need to download `google-services.json`.
+- **Authentication → Settings → Authorized domains**: add the web demo's domain (for example `fulldready.tech`).
+- On a phone it works in a built app (APK or development build), not in Expo Go, which doesn't include Google's native sign-in. On the web it opens Google's popup.
+
 The Firebase config is not a secret; Firebase Auth plus `firestore.rules` is what protects each learner's data.
 
 ## Turn on voice and AI (free)

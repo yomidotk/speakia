@@ -5,7 +5,7 @@ import { Button } from '../src/components/ui';
 import { Divider, Field, GoogleButton, Heading, Screen, TopBar, k } from '../src/components/kit';
 import { AuthResult, getProfile, startGuest, signUp } from '../src/storage';
 import { C, F } from '../src/theme';
-import { Dialog } from '../src/dialog';
+import { useGoogleSignIn } from '../src/useGoogleSignIn';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,6 +20,7 @@ export default function SignUp() {
   const [busy, setBusy] = useState(false);
   const passRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
+  const google = useGoogleSignIn(setError);
 
   const errs = {
     email: !EMAIL.test(email.trim()) ? 'Enter a valid email address.' : exists ? 'This email already has an account. Sign in instead.' : '',
@@ -104,7 +105,7 @@ export default function SignUp() {
       {!!error && <Text style={k.error} accessibilityLiveRegion="polite">{error}</Text>}
       <Button label="Create account" onPress={submit} loading={busy} />
       <Divider label="or" />
-      <GoogleButton onPress={() => Dialog.alert('Coming soon', 'Google sign-in is coming soon. For now, use your email.')} />
+      <GoogleButton onPress={google.start} busy={google.busy} />
       <Pressable onPress={async () => { await startGuest(); router.replace('/onboarding/avatar'); }} accessibilityRole="button" style={{ alignSelf: 'center', padding: 6 }}>
         <Text style={{ fontFamily: F.bold, fontSize: 14, color: C.muted }}>Continue without an account</Text>
       </Pressable>
