@@ -39,7 +39,7 @@ export default function Intro() {
         <Place place={ep.place} width={width} height={artHeight} />
         <View style={s.cast}>
           {people.map((p) => (
-            <Character key={p} who={p} size={150} />
+            <Character key={p} who={p} size={Math.max(48, Math.min(150, (width - 32) / people.length))} />
           ))}
         </View>
         <SafeAreaView edges={['top']} style={s.topBar}>

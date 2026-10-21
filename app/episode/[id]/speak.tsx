@@ -247,7 +247,7 @@ export default function Speak() {
               const active = p === speaker;
               return (
                 <View key={p} style={{ transform: [{ scale: active ? 1 : 0.86 }, { translateY: active ? 0 : 6 }] }}>
-                  <Character who={p} size={Math.min(160, sceneHeight * 0.8)} talking={active && talking} />
+                  <Character who={p} size={Math.max(48, Math.min(160, sceneHeight * 0.8, (width - 32) / people.length))} talking={active && talking} />
                 </View>
               );
             })}
