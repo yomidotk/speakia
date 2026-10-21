@@ -213,3 +213,16 @@ test('transcripts drop Whisper echoing its prompt and parts it marks as not spee
   assert.equal(heardText({ segments: [{ text: 'Hi, welcome!', no_speech_prob: 0.05 }, { text: ' Thank you.', no_speech_prob: 0.9 }] }), 'Hi, welcome!');
   assert.equal(heardText({ text: 'I came by tram.' }), 'I came by tram.');
 });
+
+test('evidence counts despite small copying changes, but not when it was never said', async () => {
+  const { quotes } = await import('../src/practice');
+  const said = "Yes, I'm a new first year student here. I just came.";
+  assert.ok(quotes('I’m a new first-year student', said));
+  assert.ok(quotes('Yes, I am a new first year student', said));
+  assert.ok(!quotes('I registered online last week', said));
+  assert.ok(!quotes('', said));
+  let r = await start();
+  mockModel({ reply: 'Great, welcome!', advance: true, evidence: 'I’m a new first-year student' });
+  r = await turn(r, said);
+  assert.equal(r.snapshot.step, 1); assert.match(r.reply, /name and your department/);
+});
