@@ -314,3 +314,10 @@ test('a step never loops: after two on-topic tries it moves on, but off-topic tr
   mockModel({ reply: 'And why exactly?', advance: false, evidence: '' });
   r = await turn(r, 'Because buses are full.'); assert.equal(r.snapshot.step, 1); assert.match(r.reply, /cafeteria/);
 });
+
+test('characters who met the learner before may use their name; new ones may not', async () => {
+  mockModel({ reply: 'Good idea!', advance: true, evidence: 'buses' }, (body) => assert.match(body.messages[0].content, /already know Yacine/));
+  await turn(await start(0, 'group-project'), 'More buses?');
+  mockModel({ reply: 'Great!', advance: true, evidence: 'yes' }, (body) => assert.match(body.messages[0].content, /never call the learner by name/));
+  await turn(await start(), 'yes');
+});

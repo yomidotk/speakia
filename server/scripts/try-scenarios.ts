@@ -93,7 +93,8 @@ function problems(plan: Plan, r: PracticeReply, saidNames: Set<string>, before: 
   if (/\b(past tense|present perfect|grammar|you should say|correct (form|sentence))\b/i.test(reply)) out.push('corrects English out loud');
   const learner = getEpisode(plan.episode)!.roles[plan.role].player!;
   const name = CAST[learner].shortName;
-  if (new RegExp(`\\b${name}\\b`).test(reply) && !saidNames.has(name.toLowerCase())) out.push(`uses the name ${name} before hearing it`);
+  const knows = getEpisode(plan.episode)!.roles[plan.role].guide?.knowsLearner;
+  if (!knows && new RegExp(`\\b${name}\\b`).test(reply) && !saidNames.has(name.toLowerCase())) out.push(`uses the name ${name} before hearing it`);
   const ai = r.speechParts.filter((p) => p.live).map((p) => p.text).join(' ').replace(/’/g, "'");
   if (new RegExp(`\\b(I'?m|I am|my name is)\\s+${name}\\b`, 'i').test(ai)) out.push(`the AI speaks as ${name} (the learner)`);
   if (plan.role === 1 && /\bwelcome\b|welcome pack|student services|\bB12\b/i.test(r.speechParts.filter((p) => p.live).map((p) => p.text).join(' '))) out.push('the AI talks like the host');

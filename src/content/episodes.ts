@@ -50,7 +50,11 @@ export type GuideLine = {
   /** the teacher's expected answers: examples of answers that do `criterion`, never the only ones */
   expected?: string[];
 };
-export type Guide = { mode?: 'scripted' | 'respond'; partner: CastId; mission: string; goal: string; facts: string[]; lines: GuideLine[] };
+export type Guide = {
+  mode?: 'scripted' | 'respond'; partner: CastId; mission: string; goal: string; facts: string[]; lines: GuideLine[];
+  /** the characters already know the learner (met in an earlier episode), so they can use their name */
+  knowsLearner?: boolean;
+};
 
 /** Guided episodes run through the same speaking screen as one built-in "role". */
 export function guideRole(g: Guide): RoleOption {
@@ -287,7 +291,7 @@ export const EPISODES: Episode[] = [
       'The university library in Algeria. Yacine, Rayan and Lina are a group for an Academic Writing project: a five-minute presentation in two weeks.',
     scene: [], roles: [], maxTurns: 10, playable: true,
     guide: {
-      partner: 'lina',
+      partner: 'lina', knowsLearner: true,
       mission: 'Plan the presentation with Rayan and Lina: suggest, agree, disagree politely and share the work.',
       goal: 'choose a topic, decide what to research, divide the tasks and solve a problem as a group',
       facts: [
