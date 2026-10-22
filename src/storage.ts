@@ -228,7 +228,7 @@ export async function signIn(email: string, password: string): Promise<{ result:
 
 // ---------- Google ----------
 
-export type GoogleResult = AuthResult | 'cancelled' | 'needs-app';
+export type GoogleResult = AuthResult | 'cancelled' | 'needs-app' | 'popup-blocked' | 'domain';
 
 type GoogleSignInLib = typeof import('@react-native-google-signin/google-signin');
 
@@ -324,6 +324,11 @@ export async function signInWithGoogle(): Promise<{ result: GoogleResult; profil
   } catch (e) {
     const code = (e as { code?: string })?.code;
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return { result: 'cancelled', profile: null };
+    if (code === 'auth/popup-blocked') return { result: 'popup-blocked', profile: null };
+    if (code === 'auth/unauthorized-domain') {
+      console.warn(`[speakia] Google sign-in: add ${typeof location !== 'undefined' ? location.hostname : 'this domain'} to Firebase > Authentication > Settings > Authorized domains`);
+      return { result: 'domain', profile: null };
+    }
     return { result: authError(e), profile: null };
   }
 }

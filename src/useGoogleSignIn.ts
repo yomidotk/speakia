@@ -18,7 +18,9 @@ export function useGoogleSignIn(onError: (message: string) => void) {
       return Dialog.alert('Google works in the installed app', 'Google sign-in needs the Speakia app (the APK). It can’t run inside Expo Go. Use your email here.');
     }
     onError(
-      result === 'network' ? 'No connection. Check your internet and try again.'
+      result === 'popup-blocked' ? 'Your browser blocked the Google window. Allow pop-ups for this site (icon in the address bar), then try again.'
+        : result === 'domain' ? 'Google sign-in isn’t switched on for this website yet. Use your email for now.'
+        : result === 'network' ? 'No connection. Check your internet and try again.'
         : result === 'too-many' ? 'Too many tries. Wait a minute and try again.'
           : 'Google sign-in didn’t work this time. Try again, or use your email.'
     );
