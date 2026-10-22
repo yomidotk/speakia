@@ -1,22 +1,41 @@
 /**
  * Plays the guided scenarios against the REAL model with tricky answers, prints every exchange and
- * flags what looks wrong. Uses your Groq quota (about 1 request per answer, ~35 per run).
+ * flags what looks wrong. Uses your Groq quota (about 1 request per answer, ~20 per run, ~2K tokens
+ * each), and waits when it hits the per-minute limit, so a full run takes a few minutes.
  *
- *   PowerShell:  $env:GROQ_API_KEY="your key"; npx tsx scripts/try-scenarios.ts
- *   One scenario only:  ... npx tsx scripts/try-scenarios.ts friends
+ *   PowerShell (DigitalOcean, the main provider):  $env:DO_MODEL_ACCESS_KEY="your key"; npm run try
+ *   or with Groq only:                             $env:GROQ_API_KEY="your key"; npm run try
+ *   One scenario only:  npm run try -- friends
  */
 import { practiceTurn, startPractice, type PracticeReply } from '../src/practice';
 import { CAST } from '../../src/content/cast';
 import { getEpisode } from '../../src/content/episodes';
 
-if (!process.env.GROQ_API_KEY) {
-  console.error('Set GROQ_API_KEY first (see the comment at the top of this file).');
+if (!process.env.DO_MODEL_ACCESS_KEY && !process.env.GROQ_API_KEY) {
+  console.error('Set DO_MODEL_ACCESS_KEY or GROQ_API_KEY first (see the comment at the top of this file).');
   process.exit(1);
 }
-const env = { GROQ_API_KEY: process.env.GROQ_API_KEY, PRACTICE_SIGNING_KEY: 'local-try-scenarios', CHAT_MODEL: process.env.CHAT_MODEL };
+const env = {
+  DO_MODEL_ACCESS_KEY: process.env.DO_MODEL_ACCESS_KEY, GROQ_API_KEY: process.env.GROQ_API_KEY,
+  CHAT_MODEL: process.env.CHAT_MODEL, PRACTICE_SIGNING_KEY: 'local-try-scenarios',
+};
 const uid = 'try-scenarios';
 let n = 0;
 const rid = () => `try-${Date.now()}-${++n}`;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Groq allows about 8K tokens a minute, so on "quota reached" wait for the next minute and retry. */
+async function patiently<T>(call: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await call();
+    } catch (e) {
+      if (!(e instanceof Error) || !/quota/i.test(e.message) || attempt === 4) throw e;
+      console.log(`    (rate limit: waiting 30 s, try ${attempt + 1} of 4)`);
+      await sleep(30_000);
+    }
+  }
+}
 
 type Plan = { episode: string; role: number; title: string; answers: { text: string; expect: 'advance' | 'stay' | 'any'; why: string }[] };
 
@@ -94,7 +113,8 @@ for (const plan of PLANS.filter((p) => !only || p.episode === only)) {
     const before = r.snapshot.step;
     console.log(`\n  YOU (${a.why}): ${a.text}`);
     try {
-      r = (await practiceTurn({ requestId: rid(), stateToken: r.stateToken, text: a.text, source: 'typed', level: 'B1', major: 'Computer Science' }, uid, env)) as PracticeReply;
+      const body = { requestId: rid(), stateToken: r.stateToken, text: a.text, source: 'typed', level: 'B1', major: 'Computer Science' };
+      r = (await patiently(() => practiceTurn(body, uid, env))) as PracticeReply;
     } catch (e) {
       console.log(`  ✖ request failed: ${e instanceof Error ? e.message : e}`);
       break;

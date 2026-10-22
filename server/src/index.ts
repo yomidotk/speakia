@@ -11,13 +11,15 @@
  * so nothing secret lives in the app.
  *
  * Secrets (set with `npx wrangler secret put NAME`):
- *   GROQ_API_KEY   from console.groq.com (free plan)
+ *   GROQ_API_KEY         from console.groq.com (free plan): speech-to-text, and backup chat
+ *   DO_MODEL_ACCESS_KEY  DigitalOcean serverless inference model access key: main chat (gpt-oss-120b)
  *   FISH_API_KEY   from fish.audio > API keys
  * Vars in wrangler.toml: FIREBASE_PROJECT_ID, CHAT_MODEL, STT_MODEL, FISH_MODEL, FISH_VOICE_<CHARACTER>.
  * Optional KV binding AUDIO stores voiced lines (the Cache API does nothing on *.workers.dev).
  */
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { chat, type ChatRequest } from './chat';
 import { confirmedCorrections } from '../../src/practice-core';
 import { PracticeError, startPractice, practiceTurn, practiceReport } from './practice';
 
@@ -27,6 +29,9 @@ export interface Env {
   FISH_API_KEY?: string;
   FIREBASE_PROJECT_ID: string;
   CHAT_MODEL?: string;
+  /** DigitalOcean serverless inference: the main chat provider when set (secret) */
+  DO_MODEL_ACCESS_KEY?: string;
+  DO_CHAT_MODEL?: string;
   STT_MODEL?: string;
   FISH_MODEL?: string;
   FISH_VOICE_SARA?: string;
@@ -245,30 +250,16 @@ async function turn(req: Request, env: Env) {
     })),
   ];
 
-  const res = await fetch(`${GROQ}/chat/completions`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${env.GROQ_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: env.CHAT_MODEL || 'openai/gpt-oss-120b',
-      messages,
-      temperature: 0.7,
-      // gpt-oss is a reasoning model: keep the thinking short (speed) and out of the reply
-      reasoning_effort: 'low',
-      include_reasoning: false,
-      max_completion_tokens: 1024,
-      response_format: { type: 'json_object' },
-    }),
-  });
+  // gpt-oss is a reasoning model: keep the thinking short (speed)
+  const res = await chat(env, { messages: messages as ChatRequest['messages'], temperature: 0.7, effort: 'low', maxTokens: 1024 });
   if (!res.ok) {
-    const detail = await res.text();
-    console.log(`groq turn failed ${res.status}: ${detail.slice(0, 300)}`);
-    return json({ error: `AI failed: ${detail}` }, 502);
+    console.log(`turn failed ${res.status}: ${res.detail}`);
+    return json({ error: `AI failed: ${res.detail}` }, 502);
   }
 
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   let out: Record<string, unknown> = {};
   try {
-    out = JSON.parse(data.choices?.[0]?.message?.content ?? '{}');
+    out = JSON.parse(res.content || '{}');
   } catch {
     out = {};
   }
@@ -423,31 +414,14 @@ Return ONLY a JSON object:
 }
 Never correct punctuation, capitalization, spacing or ASR spelling. Focus on spoken grammar and vocabulary only. "corrections": at most 3 real mistakes, empty array if none. Keep every text short, friendly and concrete.`;
 
-  const res = await fetch(`${GROQ}/chat/completions`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${env.GROQ_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: env.CHAT_MODEL || 'openai/gpt-oss-120b',
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: listing },
-      ],
-      temperature: 0.2,
-      reasoning_effort: 'medium',
-      include_reasoning: false,
-      max_completion_tokens: 2048,
-      response_format: { type: 'json_object' },
-    }),
-  });
+  const res = await chat(env, { messages: [{ role: 'system', content: system }, { role: 'user', content: listing }], temperature: 0.2, effort: 'medium', maxTokens: 2048 });
   if (!res.ok) {
-    const detail = await res.text();
-    console.log(`groq assess failed ${res.status}: ${detail.slice(0, 300)}`);
-    return json({ error: `AI failed: ${detail}` }, 502);
+    console.log(`assess failed ${res.status}: ${res.detail}`);
+    return json({ error: `AI failed: ${res.detail}` }, 502);
   }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   let out: Record<string, any> = {};
   try {
-    out = JSON.parse(data.choices?.[0]?.message?.content ?? '{}');
+    out = JSON.parse(res.content || '{}');
   } catch {
     return json({ error: 'The AI returned an unreadable evaluation' }, 502);
   }

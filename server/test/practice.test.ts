@@ -269,3 +269,30 @@ test('an off-topic message never moves on, and the question comes back', async (
   const r = await turn(await start(), 'Do you like pizza?');
   assert.equal(r.snapshot.step, 0); assert.match(r.reply, /keep practising/); assert.match(r.reply, /first-year student/);
 });
+
+test('when the main model is at its rate limit, the smaller one answers', async () => {
+  const models: string[] = [];
+  globalThis.fetch = async (_url, init) => {
+    const body = JSON.parse(init!.body as string); models.push(body.model);
+    if (models.length === 1) return new Response('rate limit', { status: 429 });
+    return Response.json({ choices: [{ message: { content: JSON.stringify({ reply: 'Great!', advance: true, evidence: 'new student' }) } }] });
+  };
+  const r = await turn(await start(), "Yes, I'm a new student.");
+  assert.deepEqual(models, ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']); assert.equal(r.snapshot.step, 1);
+});
+
+test('DigitalOcean answers first when its key is set; Groq takes over if it fails', async () => {
+  const { chat } = await import('../src/chat');
+  const calls: string[] = [];
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init!.body as string); calls.push(`${new URL(String(url)).host} ${body.model}`);
+    if (String(url).includes('do-ai.run') && calls.length === 1) return new Response('busy', { status: 503 });
+    return Response.json({ choices: [{ message: { content: '{"ok":true}' } }] });
+  };
+  const keys = { DO_MODEL_ACCESS_KEY: 'do-test', GROQ_API_KEY: 'groq-test' };
+  const req = { messages: [{ role: 'user' as const, content: 'hi' }], temperature: 0, effort: 'low' as const, maxTokens: 10 };
+  assert.deepEqual(await chat(keys, req), { ok: true, content: '{"ok":true}' });
+  assert.deepEqual(calls, ['inference.do-ai.run openai-gpt-oss-120b', 'api.groq.com openai/gpt-oss-120b']);
+  calls.length = 0; calls.push('skip');
+  await chat(keys, req); assert.equal(calls[1], 'inference.do-ai.run openai-gpt-oss-120b'); assert.equal(calls.length, 2);
+});

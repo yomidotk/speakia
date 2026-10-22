@@ -6,6 +6,8 @@ compatibility_date = "2025-09-01"
 # Your Firebase project. Not a secret: it only says whose ID tokens to accept.
 FIREBASE_PROJECT_ID = "speakia-e70e7"
 # Change these if Groq renames its models (check console.groq.com/docs/models)
+# Chat: DigitalOcean first when the DO_MODEL_ACCESS_KEY secret is set, then Groq (CHAT_MODEL) as backup
+DO_CHAT_MODEL = "openai-gpt-oss-120b"
 CHAT_MODEL = "openai/gpt-oss-120b"   # llama-3.3-70b-versatile was retired by Groq on 16 Aug 2026
 STT_MODEL = "whisper-large-v3-turbo"
 
@@ -23,6 +25,7 @@ FISH_VOICE_LINA = "933563129e564b19a115bedd57b7406a"
 
 # Secrets are NOT stored here. Set them with:
 #   npx wrangler secret put GROQ_API_KEY
+#   npx wrangler secret put DO_MODEL_ACCESS_KEY
 #   npx wrangler secret put FISH_API_KEY
 
 # Stores voiced lines so each one is generated only once (shared by all learners).

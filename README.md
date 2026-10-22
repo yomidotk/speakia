@@ -79,6 +79,14 @@ npx wrangler deploy                    # prints https://speakia-api.<you>.worker
 
 If Fish Audio is not set up or a line fails, the app reads it with the phone's built-in voice instead.
 
+**More AI capacity (recommended for demos):** Groq's free plan allows about 8K tokens a minute, about 4 answers a minute for the whole app. With a DigitalOcean [model access key](https://docs.digitalocean.com/products/inference/how-to/manage-model-access-keys/) (serverless inference, prepaid; gpt-oss-120b costs about $0.0005 per answer), the server uses DigitalOcean for the conversation and keeps Groq as backup and for speech-to-text:
+
+```bash
+npx wrangler secret put DO_MODEL_ACCESS_KEY
+```
+
+To check the scenarios against the real model: `npm run try` in `server/` (see `server/scripts/try-scenarios.ts`).
+
 In the app's `.env` (never commit it), set:
 
 ```
