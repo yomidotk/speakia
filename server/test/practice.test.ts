@@ -321,3 +321,13 @@ test('characters who met the learner before may use their name; new ones may not
   mockModel({ reply: 'Great!', advance: true, evidence: 'yes' }, (body) => assert.match(body.messages[0].content, /never call the learner by name/));
   await turn(await start(), 'yes');
 });
+
+test('half an answer gets the AI’s follow-up question, not the scripted line again', async () => {
+  let r = await start(0, 'professor');
+  mockModel({ reply: 'Good afternoon!', advance: true, evidence: 'hi' });
+  r = await turn(r, 'Hi professor, I have a question about the class.');
+  mockModel({ reply: 'Welcome.', followUp: 'And what happened on Monday?', advance: false, evidence: '' });
+  const half = await turn(r, "Yes, I'm the new student.");
+  assert.equal(half.snapshot.step, 1); assert.equal(half.reply, 'Welcome. And what happened on Monday?');
+  assert.doesNotMatch(half.reply, /arrived late on Monday/);
+});

@@ -63,6 +63,14 @@ const PLANS: Plan[] = [
     ],
   },
   {
+    episode: 'professor', role: 0, title: 'Meeting the Professor · playing Yacine',
+    answers: [
+      { text: 'Hi professor.', expect: 'any', why: 'only a greeting' },
+      { text: "Yes, I'm the new student and I was wondering about the class.", expect: 'stay', why: 'ignores “late on Monday”: should get a follow-up, not the same line' },
+      { text: 'Sorry, I was late because I got lost.', expect: 'advance', why: 'explains being late' },
+    ],
+  },
+  {
     episode: 'friends', role: 0, title: 'Making Friends · playing Yacine',
     answers: [
       { text: 'Sure, sit. I am Yacine.', expect: 'advance', why: 'short answer' },
@@ -98,6 +106,9 @@ function problems(plan: Plan, r: PracticeReply, saidNames: Set<string>, before: 
   const ai = r.speechParts.filter((p) => p.live).map((p) => p.text).join(' ').replace(/’/g, "'");
   if (new RegExp(`\\b(I'?m|I am|my name is)\\s+${name}\\b`, 'i').test(ai)) out.push(`the AI speaks as ${name} (the learner)`);
   if (plan.role === 1 && /\bwelcome\b|welcome pack|student services|\bB12\b/i.test(r.speechParts.filter((p) => p.live).map((p) => p.text).join(' '))) out.push('the AI talks like the host');
+  // not done yet: the AI should ask its own follow-up, not repeat the scripted line
+  const repeated = r.speechParts.some((p) => !p.live) && !moved && r.snapshot.history.filter((l) => l.from === 'partner' && l.text === r.speechParts.at(-1)?.text).length > 1;
+  if (expect === 'stay' && repeated && !/off-topic|tries to change/.test(plan.answers.find((a) => a.expect === expect)?.why ?? '')) out.push('repeated the scripted line instead of a follow-up');
   const sentences = reply.split(/(?<=[.!?])\s+/).map((x) => x.toLowerCase().replace(/[^a-z ]/g, '').trim()).filter(Boolean);
   if (new Set(sentences).size < sentences.length) out.push('says the same sentence twice');
   return out;
