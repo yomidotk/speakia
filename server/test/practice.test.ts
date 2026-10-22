@@ -345,3 +345,20 @@ test('saying goodbye on the last step completes the episode (it is the answer, n
     assert.equal(end.snapshot.completed, true, id); assert.equal(end.snapshot.endReason, 'objectives_completed'); assert.equal(end.done, true);
   }
 });
+
+test('the last step always closes the scene: a scene question is answered, off-topic gets a kind note, then goodbye', async () => {
+  const toEnd = async () => {
+    const answers = getEpisode('professor')!.roles[0].guide!.lines.length - 1;
+    let r = await start(0, 'professor');
+    for (let i = 0; i < answers - 1; i++) { mockModel({ reply: 'Good.', advance: true, evidence: 'my answer' }); r = await turn(r, 'This is my answer.'); }
+    return r;
+  };
+  let r = await toEnd();
+  mockModel({ reply: 'They are on Tuesdays from 2 to 4.', advance: false, evidence: '' }, (body) => assert.match(body.messages[0].content, /END of the scene/));
+  const asked = await turn(r, 'When are your office hours again?');
+  assert.equal(asked.snapshot.completed, true); assert.match(asked.reply, /Tuesdays from 2 to 4\. You’re welcome\. See you on Monday\./);
+  r = await toEnd();
+  mockModel({ reply: 'This is a practice conversation for learning English, so let’s leave that one. Shall we?', advance: false, offTopic: true, evidence: '' });
+  const off = await turn(r, 'What is the best football team?');
+  assert.equal(off.snapshot.completed, true); assert.match(off.reply, /practice conversation/); assert.doesNotMatch(off.reply, /Shall we\?/); assert.match(off.reply, /See you on Monday/);
+});
