@@ -13,12 +13,12 @@ import { Button, Label } from '../../../src/components/ui';
 import { Sheet } from '../../../src/components/kit';
 import { BackButton } from '../../../src/components/BackButton';
 import { CAST } from '../../../src/content/cast';
-import { getEpisode, guideCast, guideRole } from '../../../src/content/episodes';
+import { getEpisode, guideCast, guideRole, lineParts } from '../../../src/content/episodes';
 import { isDemo, transcribe } from '../../../src/api';
 import { answerPractice, requestId, startPractice, type PracticeReply } from '../../../src/practice-api';
 import { duration, elapsed, measuredReport, revealHint, type Measurements } from '../../../src/practice-core';
 import { addAttempt, getProfile, practiceLocal, savePracticeLocal, type Profile } from '../../../src/storage';
-import { say, stopSpeaking } from '../../../src/voice';
+import { prepareLines, say, stopSpeaking } from '../../../src/voice';
 import { C, F } from '../../../src/theme';
 
 type Phase = 'partner' | 'you' | 'recording' | 'thinking' | 'paused' | 'review';
@@ -102,6 +102,11 @@ export default function Speak() {
     }
   };
   const play = (r: PracticeReply) => {
+    // get the next two scripted lines voiced while this one plays, so the scene (and its closing
+    // line) never waits for Fish and falls back to the phone voice
+    if (guide && guide.mode !== 'respond') {
+      void prepareLines(guide.lines.slice(r.snapshot.step + 1, r.snapshot.step + 3).flatMap((l) => lineParts(guide, l)));
+    }
     invalidateVoice(); const ticket = epoch.current;
     changePhase('partner');
     // Fish accepts at most 400 characters per request. Keep cached script and live reaction separate.
