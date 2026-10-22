@@ -190,15 +190,11 @@ function play(source: Source, cb: Callbacks, startWithin?: number, playbackRate 
 
 const timeout = (ms: number) => new Promise<null>((r) => setTimeout(() => r(null), ms));
 
-const isSaved = (url: string) =>
-  webAudio.has(url) || inFlight.has(url) || (!!voiceDir && new File(voiceDir, fileName(url)).exists);
-
 /**
- * Speak a line as a character: their Fish Audio voice when the server is set up, otherwise the
- * phone's built-in voice with the character's own pitch.
+ * Speak a line as a character: their voice from the server (ElevenLabs, or Fish) when it is set
+ * up, otherwise the phone's built-in voice with the character's own pitch.
  *
- * `live` is for brand-new lines (AI replies): instead of downloading the whole clip first, the
- * audio plays while it is still arriving, so the reply starts sooner.
+ * `live` is for brand-new lines (AI replies): they get a little longer before the phone voice.
  */
 export async function say(who: CastId, text: string, cb: Callbacks = {}, slow = false, live = false, playbackRate = 1) {
   stopSpeaking();
@@ -214,21 +210,10 @@ export async function say(who: CastId, text: string, cb: Callbacks = {}, slow = 
       },
     };
 
-    if (live && Platform.OS !== 'web' && !isSaved(url)) {
-      const token = await idToken();
-      if (token && mine === sayCount) {
-        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-        if (mine !== sayCount) return;
-        if (await play({ uri: url, headers: { authorization: `Bearer ${token}` } }, logStart, LIVE_WAIT_MS, playbackRate)) return;
-        if (mine !== sayCount) return;
-        console.warn(`[speakia] voice ${who}: live reply did not start in ${LIVE_WAIT_MS} ms, using phone voice`);
-        await sayOnPhone(who, text, cb, slow, mine, playbackRate);
-        return;
-      }
-    }
-
-    // if we stop waiting, the download carries on in the background: next time the line is instant
-    const uri = await Promise.race([fetchLine(who, text, slow), timeout(WAIT_MS)]);
+    // AI lines (`live`) are downloaded whole like scripted ones: ElevenLabs makes a line in about half
+    // a second, and the phone's player didn't reliably start playing a line that was still arriving.
+    // If we stop waiting, the download carries on in the background: next time the line is instant.
+    const uri = await Promise.race([fetchLine(who, text, slow), timeout(live ? LIVE_WAIT_MS : WAIT_MS)]);
     if (mine !== sayCount) return; // a newer line, or a stop, replaced this one while we waited
     if (uri) {
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
