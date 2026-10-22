@@ -141,7 +141,7 @@ export const EPISODES: Episode[] = [
         // "That's completely normal." is a reaction to a worry, so it is the fallback reaction.
         { stage: 'Today’s programme and clubs', react: 'That’s completely normal.',
           say: 'If I were you, I’d make a weekly plan from the start. The welcome talk is at 10 in the amphitheatre. After that, you can choose a campus tour or a library visit. Which one would you prefer?',
-          criterion: 'Choose the campus tour or the library visit, ideally with a reason.',
+          criterion: 'Choose the campus tour or the library visit.',
           hints: { idea: 'Choose one and give a reason with “because”.', starter: 'I’d prefer the… because…', example: 'I’d prefer the campus tour, because I don’t know where anything is yet.' } },
         { react: 'Good idea.', say: 'There’s also a clubs fair at 2. What do you like doing in your free time?',
           criterion: 'Talk about a free-time activity or a club.',
@@ -272,7 +272,7 @@ export const EPISODES: Episode[] = [
           criterion: 'Suggest a time and a place to meet.',
           hints: { idea: 'Give a time and a place.', starter: 'Let’s meet at…', example: 'Let’s meet at the tram stop at ten.' } },
         { who: 'lina', react: 'Perfect!', say: 'Oh, wait, my phone… The professor just posted the group project, and we three are in the same group!',
-          criterion: 'React to the news, ideally with a question.',
+          criterion: 'React to the news.',
           hints: { idea: 'React to the news and ask a question.', starter: 'That’s great news! When…', example: 'That’s great news! When is the deadline?' } },
         // Not in the script (it ends on the learner's question): a short closing so the scene ends.
         { who: 'lina', say: 'Let’s talk about it on Saturday. See you then!' },
@@ -299,10 +299,10 @@ export const EPISODES: Episode[] = [
       ],
       lines: staged([
         { stage: 'Choosing a topic', say: 'Okay, the topic is “One way to improve student life on campus.” It’s a five-minute presentation in two weeks. Any ideas?',
-          criterion: 'Suggest an idea to improve student life on campus, ideally with a reason.',
+          criterion: 'Suggest an idea to improve student life on campus.',
           hints: { idea: 'Make a suggestion: How about…? / I think we should… because…', starter: 'How about…', example: 'How about longer library opening hours? Lots of students need a quiet place to study.' } },
         { who: 'rayan', say: 'Hmm, I’m not sure. I think the cafeteria is a bigger problem. The food is expensive and the queues are too long.',
-          criterion: 'Respond to Rayan: disagree politely or agree, with a reason.',
+          criterion: 'Respond to Rayan’s idea: agree or disagree.',
           hints: { idea: 'Disagree politely: I see your point, but…', starter: 'I see your point, but…', example: 'I see your point, but most students care more about studying.' } },
         { stage: 'Making a decision', say: 'Both ideas are good. Which one is easier to research in two weeks?',
           criterion: 'Choose one idea and give a reason.',

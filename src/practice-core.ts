@@ -10,6 +10,8 @@ export type HintReveal = { turnIndex: number; tier: 1 | 2 | 3 };
 export type PracticeSnapshot = {
   id: string; episodeId: string; roleIndex: number; startedAt: number; endedAt?: number;
   step: number; goodbyeCount: number; completed: boolean; endReason?: string;
+  /** on-topic answers to the current step that didn't complete it yet */
+  tries?: number;
   turns: PracticeTurn[]; history: PracticeLine[]; objectives: { id: string; turnId: string; quote: string }[];
 };
 export type Measurements = { totalMs: number; pausedMs: number; hintReveals: HintReveal[] };

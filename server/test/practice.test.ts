@@ -302,3 +302,15 @@ test('a reply where the AI speaks as the learner is never said', async () => {
   const r = await turn(await start(), 'yes');
   assert.doesNotMatch(r.reply, /I’m Yacine|I'm Yacine/); assert.match(r.reply, /name and your department/);
 });
+
+test('a step never loops: after two on-topic tries it moves on, but off-topic tries don’t count', async () => {
+  let r = await start(0, 'group-project');
+  mockModel({ reply: 'Why do you think so?', advance: false, evidence: '' });
+  r = await turn(r, 'Maybe more buses?'); assert.equal(r.snapshot.step, 0);
+  mockModel({ reply: 'Ha, maybe later!', advance: false, offTopic: true, evidence: '' });
+  r = await turn(r, 'Do you like cats?'); assert.equal(r.snapshot.step, 0);
+  mockModel({ reply: 'What reason?', advance: false, evidence: '' });
+  r = await turn(r, 'Transport is important.'); assert.equal(r.snapshot.step, 0);
+  mockModel({ reply: 'And why exactly?', advance: false, evidence: '' });
+  r = await turn(r, 'Because buses are full.'); assert.equal(r.snapshot.step, 1); assert.match(r.reply, /cafeteria/);
+});
