@@ -10,6 +10,9 @@ import { idToken } from './storage';
 // Without a server, or if a line takes too long, the phone's built-in voice reads it instead.
 const API = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
 const WAIT_MS = 6_000; // longest we keep the learner waiting before the phone voice takes over
+// AI reactions are brand new, so Fish makes them on the spot: they get a little longer, because the
+// robot voice breaks the scene more than a short pause does
+const LIVE_WAIT_MS = 8_000;
 
 type Callbacks = { onStart?: () => void; onDone?: () => void };
 
@@ -205,9 +208,9 @@ export async function say(who: CastId, text: string, cb: Callbacks = {}, slow = 
       if (token && mine === sayCount) {
         await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
         if (mine !== sayCount) return;
-        if (await play({ uri: url, headers: { authorization: `Bearer ${token}` } }, logStart, WAIT_MS, playbackRate)) return;
+        if (await play({ uri: url, headers: { authorization: `Bearer ${token}` } }, logStart, LIVE_WAIT_MS, playbackRate)) return;
         if (mine !== sayCount) return;
-        console.warn(`[speakia] voice ${who}: live reply did not start in ${WAIT_MS} ms, using phone voice`);
+        console.warn(`[speakia] voice ${who}: live reply did not start in ${LIVE_WAIT_MS} ms, using phone voice`);
         await sayOnPhone(who, text, cb, slow, mine, playbackRate);
         return;
       }
