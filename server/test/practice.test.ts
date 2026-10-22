@@ -48,8 +48,9 @@ test('off-topic and unresolved follow-ups do not skip scenario questions', async
   mockModel({ reply: 'The check-in desk is right here.', advance: false, evidence: '', needsClarification: false });
   const r = await turn(s, 'Where is the check-in desk?');
   assert.equal(r.snapshot.step, 0); assert.match(r.reply, /first-year student/);
+  // evidence the learner never said doesn't count (on a first try, before the one-follow-up limit)
   mockModel({ reply: 'Thanks.', advance: true, evidence: 'imaginary answer' });
-  const r2 = await turn(r, 'Tell me about football.'); assert.equal(r2.snapshot.step, 0);
+  const r2 = await turn(await start(), 'Tell me about football.'); assert.equal(r2.snapshot.step, 0);
 });
 test('first goodbye redirects once, second closes without provider calls', async () => {
   const s = await start(); globalThis.fetch = async () => { throw new Error('must not call provider'); };
@@ -303,14 +304,12 @@ test('a reply where the AI speaks as the learner is never said', async () => {
   assert.doesNotMatch(r.reply, /I’m Yacine|I'm Yacine/); assert.match(r.reply, /name and your department/);
 });
 
-test('a step never loops: after two on-topic tries it moves on, but off-topic tries don’t count', async () => {
+test('a step never loops: after one follow-up the next on-topic answer moves on; off-topic doesn’t count', async () => {
   let r = await start(0, 'group-project');
   mockModel({ reply: 'Why do you think so?', advance: false, evidence: '' });
   r = await turn(r, 'Maybe more buses?'); assert.equal(r.snapshot.step, 0);
   mockModel({ reply: 'Ha, maybe later!', advance: false, offTopic: true, evidence: '' });
   r = await turn(r, 'Do you like cats?'); assert.equal(r.snapshot.step, 0);
-  mockModel({ reply: 'What reason?', advance: false, evidence: '' });
-  r = await turn(r, 'Transport is important.'); assert.equal(r.snapshot.step, 0);
   mockModel({ reply: 'And why exactly?', advance: false, evidence: '' });
   r = await turn(r, 'Because buses are full.'); assert.equal(r.snapshot.step, 1); assert.match(r.reply, /cafeteria/);
 });
