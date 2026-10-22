@@ -331,3 +331,17 @@ test('half an answer gets the AI’s follow-up question, not the scripted line a
   assert.equal(half.snapshot.step, 1); assert.equal(half.reply, 'Welcome. And what happened on Monday?');
   assert.doesNotMatch(half.reply, /arrived late on Monday/);
 });
+
+test('saying goodbye on the last step completes the episode (it is the answer, not leaving)', async () => {
+  for (const id of ['professor', 'orientation']) {
+    const answers = getEpisode(id)!.roles[0].guide!.lines.length - 1;
+    let r = await start(0, id);
+    for (let i = 0; i < answers - 1; i++) {
+      mockModel({ reply: 'Good.', advance: true, evidence: 'my answer' });
+      r = await turn(r, 'This is my answer.');
+    }
+    mockModel({ reply: 'You’re welcome!', advance: true, evidence: 'Thank you' });
+    const end = await turn(r, 'Thank you very much, goodbye!');
+    assert.equal(end.snapshot.completed, true, id); assert.equal(end.snapshot.endReason, 'objectives_completed'); assert.equal(end.done, true);
+  }
+});
