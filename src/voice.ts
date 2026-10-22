@@ -64,7 +64,18 @@ function fileName(url: string) {
   return `${(h >>> 0).toString(36)}-${url.length}.mp3`;
 }
 
-const voiceDir = Platform.OS === 'web' ? null : new Directory(Paths.cache, 'voice');
+// Saved lines are named by their text, not by the voice, so a new set of voices needs a new folder:
+// otherwise the phone keeps playing lines recorded with the old voices. Bump this when voices change.
+const VOICE_SET = 'voice-eleven-1';
+const voiceDir = Platform.OS === 'web' ? null : new Directory(Paths.cache, VOICE_SET);
+if (Platform.OS !== 'web') {
+  for (const old of ['voice']) {
+    try {
+      const dir = new Directory(Paths.cache, old);
+      if (dir.exists) dir.delete(); // lines recorded with the old (Fish) voices
+    } catch {}
+  }
+}
 const inFlight = new Map<string, Promise<string | null>>();
 const webAudio = new Map<string, string>(); // web: line url -> object URL
 
