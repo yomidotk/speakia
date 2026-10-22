@@ -296,3 +296,9 @@ test('DigitalOcean answers first when its key is set; Groq takes over if it fail
   calls.length = 0; calls.push('skip');
   await chat(keys, req); assert.equal(calls[1], 'inference.do-ai.run openai-gpt-oss-120b'); assert.equal(calls.length, 2);
 });
+
+test('a reply where the AI speaks as the learner is never said', async () => {
+  mockModel({ reply: 'Sure, I’m Yacine, Computer Science.', advance: true, evidence: 'yes' });
+  const r = await turn(await start(), 'yes');
+  assert.doesNotMatch(r.reply, /I’m Yacine|I'm Yacine/); assert.match(r.reply, /name and your department/);
+});

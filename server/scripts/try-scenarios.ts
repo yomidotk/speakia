@@ -94,6 +94,8 @@ function problems(plan: Plan, r: PracticeReply, saidNames: Set<string>, before: 
   const learner = getEpisode(plan.episode)!.roles[plan.role].player!;
   const name = CAST[learner].shortName;
   if (new RegExp(`\\b${name}\\b`).test(reply) && !saidNames.has(name.toLowerCase())) out.push(`uses the name ${name} before hearing it`);
+  const ai = r.speechParts.filter((p) => p.live).map((p) => p.text).join(' ').replace(/’/g, "'");
+  if (new RegExp(`\\b(I'?m|I am|my name is)\\s+${name}\\b`, 'i').test(ai)) out.push(`the AI speaks as ${name} (the learner)`);
   if (plan.role === 1 && /\bwelcome\b|welcome pack|student services|\bB12\b/i.test(r.speechParts.filter((p) => p.live).map((p) => p.text).join(' '))) out.push('the AI talks like the host');
   const sentences = reply.split(/(?<=[.!?])\s+/).map((x) => x.toLowerCase().replace(/[^a-z ]/g, '').trim()).filter(Boolean);
   if (new Set(sentences).size < sentences.length) out.push('says the same sentence twice');
