@@ -362,3 +362,16 @@ test('the last step always closes the scene: a scene question is answered, off-t
   const off = await turn(r, 'What is the best football team?');
   assert.equal(off.snapshot.completed, true); assert.match(off.reply, /practice conversation/); assert.doesNotMatch(off.reply, /Shall we\?/); assert.match(off.reply, /See you on Monday/);
 });
+
+test('the reaction never repeats what the next scripted line says', async () => {
+  const { withoutEcho } = await import('../src/practice');
+  const next = 'You’re one of the new students, aren’t you? I think you arrived late on Monday.';
+  assert.equal(withoutEcho('I think you arrived late on Monday.', next), '');
+  assert.equal(withoutEcho('Of course! I think you arrived late on Monday.', next), 'Of course!');
+  assert.equal(withoutEcho('Of course, have a seat.', next), 'Of course, have a seat.');
+  assert.equal(withoutEcho('Nice to meet you, Yecin!', 'Nice to meet you! How did you get to campus?'), '');
+  let r = await start(0, 'professor');
+  mockModel({ reply: 'I think you arrived late on Monday.', advance: true, evidence: 'I need some help' });
+  r = await turn(r, 'Hi professor, I need some help.');
+  assert.equal(r.reply, next); assert.equal(r.speechParts.length, 1);
+});
