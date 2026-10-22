@@ -40,6 +40,15 @@ export interface Env {
   FISH_VOICE_HADDAD?: string;
   FISH_VOICE_RAYAN?: string;
   FISH_VOICE_LINA?: string;
+  /** ElevenLabs (secret) and one voice ID per character; characters without one use Fish */
+  ELEVENLABS_API_KEY?: string;
+  ELEVEN_MODEL?: string;
+  ELEVEN_VOICE_SARA?: string;
+  ELEVEN_VOICE_YACINE?: string;
+  ELEVEN_VOICE_BENALI?: string;
+  ELEVEN_VOICE_HADDAD?: string;
+  ELEVEN_VOICE_RAYAN?: string;
+  ELEVEN_VOICE_LINA?: string;
   AUDIO?: KVNamespace; // optional: stores generated lines so each is made only once
 }
 
@@ -296,32 +305,44 @@ const VOICES: Record<string, keyof Env> = {
  * so generated audio is kept in KV (when bound): a line any learner has heard is never made twice.
  * The x-speakia-voice header says "stored" or "generated", which the app logs with its timings.
  */
-async function speak(url: URL, env: Env, ctx: ExecutionContext) {
-  if (!env.FISH_API_KEY) return json({ error: 'Voices are not set up on the server' }, 503);
-  const who = url.searchParams.get('who') ?? '';
-  const text = (url.searchParams.get('text') ?? '').trim();
-  const slow = url.searchParams.get('slow') === '1';
-  if (!VOICES[who]) return json({ error: 'Unknown character' }, 400);
-  if (!text || text.length > 400) return json({ error: 'Text must be 1 to 400 characters' }, 400);
+const ELEVEN_VOICES: Record<string, keyof Env> = {
+  sara: 'ELEVEN_VOICE_SARA',
+  yacine: 'ELEVEN_VOICE_YACINE',
+  benali: 'ELEVEN_VOICE_BENALI',
+  haddad: 'ELEVEN_VOICE_HADDAD',
+  rayan: 'ELEVEN_VOICE_RAYAN',
+  lina: 'ELEVEN_VOICE_LINA',
+};
 
-  const model = env.FISH_MODEL || 's2.1-pro-free';
-  const voice = env[VOICES[who]] as string | undefined;
-  const audioHeaders = { 'content-type': 'audio/mpeg', 'cache-control': 'private, max-age=2592000', ...CORS };
+type Voice = { provider: 'eleven' | 'fish'; model: string; voice?: string };
 
-  // Key: everything that changes the audio, nothing about who asked.
-  const key = await sha256(`${model}|${voice ?? 'default'}|${slow ? 1 : 0}|${text}`);
-  if (env.AUDIO) {
-    const stored = await env.AUDIO.get(key, 'arrayBuffer');
-    if (stored) return new Response(stored, { headers: { ...audioHeaders, 'x-speakia-voice': 'stored' } });
+/**
+ * ElevenLabs (Flash, starts in well under a second) for every character that has an ElevenLabs
+ * voice, so new AI lines don't keep the learner waiting; Fish Audio for the others and as backup.
+ * A character always uses one provider, so their reaction and their scripted line sound the same.
+ */
+function voicesFor(who: string, env: Env): Voice[] {
+  const list: Voice[] = [];
+  const eleven = env[ELEVEN_VOICES[who]] as string | undefined;
+  if (env.ELEVENLABS_API_KEY && eleven) list.push({ provider: 'eleven', model: env.ELEVEN_MODEL || 'eleven_flash_v2_5', voice: eleven });
+  if (env.FISH_API_KEY) list.push({ provider: 'fish', model: env.FISH_MODEL || 's2.1-pro-free', voice: env[VOICES[who]] as string | undefined });
+  return list;
+}
+
+function generate(v: Voice, text: string, slow: boolean, env: Env) {
+  if (v.provider === 'eleven') {
+    return fetch(`https://api.elevenlabs.io/v1/text-to-speech/${v.voice}/stream?output_format=mp3_44100_64`, {
+      method: 'POST',
+      headers: { 'xi-api-key': env.ELEVENLABS_API_KEY!, 'content-type': 'application/json' },
+      body: JSON.stringify({ text, model_id: v.model, voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: slow ? 0.85 : 1 } }),
+    });
   }
-
-  const started = Date.now();
-  const res = await fetch('https://api.fish.audio/v1/tts', {
+  return fetch('https://api.fish.audio/v1/tts', {
     method: 'POST',
-    headers: { authorization: `Bearer ${env.FISH_API_KEY}`, 'content-type': 'application/json', model },
+    headers: { authorization: `Bearer ${env.FISH_API_KEY}`, 'content-type': 'application/json', model: v.model },
     body: JSON.stringify({
       text,
-      ...(voice ? { reference_id: voice } : {}),
+      ...(v.voice ? { reference_id: v.voice } : {}),
       format: 'mp3',
       mp3_bitrate: 64,
       latency: 'low',
@@ -329,23 +350,52 @@ async function speak(url: URL, env: Env, ctx: ExecutionContext) {
       prosody: { speed: slow ? 0.85 : 1 },
     }),
   });
-  if (!res.ok || !res.body) return json({ error: `Voice failed: ${res.ok ? 'empty audio' : await res.text()}` }, 502);
-  console.log(`fish ${who}: first byte after ${Date.now() - started} ms (${text.length} chars)`);
+}
 
-  // Stream to the learner now; save a copy to KV in the background.
-  const [toLearner, toStore] = res.body.tee();
-  if (env.AUDIO) {
-    const store = env.AUDIO;
-    ctx.waitUntil(
-      new Response(toStore).arrayBuffer().then((buf) => {
-        console.log(`fish ${who}: complete after ${Date.now() - started} ms (${buf.byteLength} bytes)`);
-        return store.put(key, buf, { expirationTtl: 60 * 60 * 24 * 90 });
-      })
-    );
-  } else {
-    ctx.waitUntil(toStore.cancel());
+export async function speak(url: URL, env: Env, ctx: ExecutionContext) {
+  const who = url.searchParams.get('who') ?? '';
+  const text = (url.searchParams.get('text') ?? '').trim();
+  const slow = url.searchParams.get('slow') === '1';
+  if (!VOICES[who]) return json({ error: 'Unknown character' }, 400);
+  if (!text || text.length > 400) return json({ error: 'Text must be 1 to 400 characters' }, 400);
+  const voices = voicesFor(who, env);
+  if (!voices.length) return json({ error: 'Voices are not set up on the server' }, 503);
+  const audioHeaders = { 'content-type': 'audio/mpeg', 'cache-control': 'private, max-age=2592000', ...CORS };
+
+  let failure = '';
+  for (const v of voices) {
+    // Key: everything that changes the audio, nothing about who asked.
+    const key = await sha256(`${v.provider === 'eleven' ? 'eleven|' : ''}${v.model}|${v.voice ?? 'default'}|${slow ? 1 : 0}|${text}`);
+    if (env.AUDIO) {
+      const stored = await env.AUDIO.get(key, 'arrayBuffer');
+      if (stored) return new Response(stored, { headers: { ...audioHeaders, 'x-speakia-voice': 'stored' } });
+    }
+
+    const started = Date.now();
+    const res = await generate(v, text, slow, env);
+    if (!res.ok || !res.body) {
+      failure = `${v.provider} ${res.status}: ${res.ok ? 'empty audio' : (await res.text()).slice(0, 200)}`;
+      console.log(`voice ${who}: ${failure}, trying the next one`);
+      continue;
+    }
+    console.log(`${v.provider} ${who}: first byte after ${Date.now() - started} ms (${text.length} chars)`);
+
+    // Stream to the learner now; save a copy to KV in the background.
+    const [toLearner, toStore] = res.body.tee();
+    if (env.AUDIO) {
+      const store = env.AUDIO;
+      ctx.waitUntil(
+        new Response(toStore).arrayBuffer().then((buf) => {
+          console.log(`${v.provider} ${who}: complete after ${Date.now() - started} ms (${buf.byteLength} bytes)`);
+          return store.put(key, buf, { expirationTtl: 60 * 60 * 24 * 90 });
+        })
+      );
+    } else {
+      ctx.waitUntil(toStore.cancel());
+    }
+    return new Response(toLearner, { headers: { ...audioHeaders, 'x-speakia-voice': 'generated' } });
   }
-  return new Response(toLearner, { headers: { ...audioHeaders, 'x-speakia-voice': 'generated' } });
+  return json({ error: `Voice failed: ${failure}` }, 502);
 }
 
 async function sha256(s: string) {

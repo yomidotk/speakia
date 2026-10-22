@@ -23,9 +23,20 @@ FISH_VOICE_HADDAD = "9a9cf47702da476aa4629e2506d4a857"
 FISH_VOICE_RAYAN = "536d3a5e000945adb7038665781a4aca"
 FISH_VOICE_LINA = "933563129e564b19a115bedd57b7406a"
 
+# ElevenLabs voices (faster to start than Fish's free model). Paste a voice ID per character from
+# elevenlabs.io > Voices; a character left empty keeps its Fish voice. Needs the ELEVENLABS_API_KEY secret.
+ELEVEN_MODEL = "eleven_flash_v2_5"
+ELEVEN_VOICE_SARA = ""
+ELEVEN_VOICE_YACINE = ""
+ELEVEN_VOICE_BENALI = ""
+ELEVEN_VOICE_HADDAD = ""
+ELEVEN_VOICE_RAYAN = ""
+ELEVEN_VOICE_LINA = ""
+
 # Secrets are NOT stored here. Set them with:
 #   npx wrangler secret put GROQ_API_KEY
 #   npx wrangler secret put DO_MODEL_ACCESS_KEY
+#   npx wrangler secret put ELEVENLABS_API_KEY
 #   npx wrangler secret put FISH_API_KEY
 
 # Stores voiced lines so each one is generated only once (shared by all learners).

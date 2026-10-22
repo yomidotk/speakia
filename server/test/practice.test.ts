@@ -375,3 +375,20 @@ test('the reaction never repeats what the next scripted line says', async () => 
   r = await turn(r, 'Hi professor, I need some help.');
   assert.equal(r.reply, next); assert.equal(r.speechParts.length, 1);
 });
+
+test('voices: ElevenLabs for characters that have one, Fish for the rest and when ElevenLabs fails', async () => {
+  const { speak } = await import('../src/index');
+  const hosts: string[] = [];
+  let failEleven = false;
+  globalThis.fetch = async (url) => {
+    const host = new URL(String(url)).host; hosts.push(host);
+    if (host.includes('elevenlabs') && failEleven) return new Response('quota', { status: 401 });
+    return new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'audio/mpeg' } });
+  };
+  const env = { FISH_API_KEY: 'f', ELEVENLABS_API_KEY: 'e', ELEVEN_VOICE_BENALI: 'voice-b', FISH_VOICE_BENALI: 'fish-b' } as any;
+  const ctx = { waitUntil() {}, passThroughOnException() {} } as any;
+  const ask = (who: string) => speak(new URL(`https://t/speak?who=${who}&text=Hello`), env, ctx);
+  assert.equal((await ask('benali')).status, 200); assert.deepEqual(hosts, ['api.elevenlabs.io']);
+  hosts.length = 0; assert.equal((await ask('sara')).status, 200); assert.deepEqual(hosts, ['api.fish.audio']);
+  hosts.length = 0; failEleven = true; assert.equal((await ask('benali')).status, 200); assert.deepEqual(hosts, ['api.elevenlabs.io', 'api.fish.audio']);
+});
