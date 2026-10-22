@@ -1,140 +1,181 @@
 # Speakia
 
-**Step into the story. Speak.** A mobile app where Algerian university students practise spoken English by stepping into a story with fixed characters (Prof. Benali, Prof. Haddad, Yacine, Sara), watching a short scene, choosing a role, and speaking with an AI partner who answers out loud.
+**Step into the story. Speak.** Speakia is a mobile app where Algerian university students practise spoken English by stepping into short campus stories. Each episode is a real situation (Orientation Day, office hours with a professor, making friends, a group project). The learner listens to the scene, chooses who to play, and then talks out loud with the characters, who answer in their own voices and react to what the learner actually said.
 
-Built for Thirduni Cohort 1 (October 2026).
+Built for **ThirdUni Cohort 1** (October 2026).
 
-## What works in this first draft
+- **Web demo** (an Android phone mock-up with the app inside): https://fulldready.tech/speakia/
+- **Android:** an APK built with EAS (see [Build the Android app](#build-the-android-app-apk))
 
-- Welcome → Sign up / Sign in with Firebase (email and password, real reset-password email) or continue as a guest; progress syncs to Firestore
-- Onboarding: profile (avatar, name, university, year) → major (10 options) → level (A1–C2) or a 4-question speaking placement test → level result
-- Season 1 map (road climbs from level 1 at the bottom to the finale), Seasons, Progress, Me (edit profile, major, goals, level, retake test, privacy, help, log out)
-- Levels 1–4, the teacher's B1 scenarios, as guided conversations where the learner talks as themselves:
-  1. **Orientation Day** with Sara · 2. **Meeting the Professor** with Prof. Benali · 3. **Making Friends** with Rayan and Lina · 4. **The Group Project** with Rayan and Lina
-  - Intro: place and characters, then straight into the conversation
-  - Speak: characters say the teacher's lines in their own voices; after each answer the AI writes a short reaction to what you actually said, then the next line follows. You only move on when your answer does what the step asks (for example "give a reason"). Hint ladder (idea → starter → example), review the transcript before sending, "type instead", 45 s recording cap
-  - Result: completion, independence stars (how few hints you needed), time, corrections and plain-language feedback
-- **Demo mode**: with no server configured, the partner uses scripted replies and you type your answers
+## What the app does
 
-Not done yet: levels 5 and 6; Google sign-in; notifications; photo upload; "say it better" re-recording.
+- **Accounts:** sign up or sign in with email and password or with Google, or continue as a guest. Progress is kept on the phone and synced to the learner's account (Firebase), so it follows them to any device. A guest who creates an account later keeps their progress.
+- **Onboarding:** build an avatar (skin, hair or hijab, glasses…), add a profile, choose a major (Computer Science for Season 1), then pick a level (A1–C2) or take the placement test: the English teacher's 20-question B1 quiz plus 4 spoken answers that an AI rates against CEFR speaking criteria.
+- **Season 1 map:** episodes on a road from the bottom of the screen up; each one unlocks when the previous one is finished.
+- **Episodes 1–4**, written by the team's English teacher at B1 level:
+  1. **Orientation Day** with Sara, the student volunteer
+  2. **Meeting the Professor** with Prof. Benali
+  3. **Making Friends** with Rayan and Lina
+  4. **The Group Project** with Rayan and Lina
+- **How an episode works:**
+  1. **Listen:** the characters play the teacher's scene, with Yacine (a new student) giving the example answers. Subtitles and playback speed.
+  2. **Choose a role:** play Yacine (the characters talk to you), or in the one-to-one scenes play the host (Sara or the professor) while the AI plays Yacine.
+  3. **Talk:** record your answer (or type it), check the transcript, and send. The character reacts to what you said, then the scene continues with the teacher's next line. The scene follows the teacher's script but stays flexible: different details, small talk and questions are answered naturally; a half answer gets one follow-up question; an off-topic message is gently brought back to the scene. Grammar mistakes never block the learner; they are collected for the feedback. Hints come in three steps: idea, sentence starter, example.
+  4. **Results:** completion, independence stars (fewer hints, more stars), time, spoken and typed answers, corrections ("say it better") and short feedback in plain language.
+- **Progress, Seasons and Me tabs:** history, stats, level, profile, goals, privacy, log out, delete account.
 
-## Run the app
+## How it works
 
-Requires Node.js LTS and the **Expo Go** app on your phone.
-
-```bash
-npx create-expo-app@latest speakia --template blank-typescript
-cd speakia
-npx expo install expo-router react-native-safe-area-context react-native-screens expo-linking expo-constants expo-status-bar react-native-svg expo-audio expo-speech @react-native-async-storage/async-storage expo-font @expo-google-fonts/bricolage-grotesque @expo-google-fonts/plus-jakarta-sans
+```
+Phone app (Expo / React Native)  ──►  Cloudflare Worker (server/)  ──►  AI and voice services
+  screens, recording, playback          checks the Firebase login,         · DigitalOcean (gpt-oss-120b): the conversation
+  progress on the phone                 keeps every API key secret,        · Groq: speech-to-text (Whisper), backup chat
+        │                               follows the episode script,        · ElevenLabs (Flash): character voices
+        ▼                               stores voiced lines                · Fish Audio: backup voices
+  Firebase (Auth + Firestore)
+  accounts and synced progress
 ```
 
-Then:
+- **No API key is in the app.** Every AI or voice request goes through the server, which only answers learners signed in with Firebase.
+- **The script lives on the server**, so a client can't skip steps or change the story. Each step has the teacher's expected answers as examples; the AI judges whether an answer does the step, and writes only a short reaction.
+- **Voices are made once:** every voiced line is stored (Cloudflare KV on the server, and on the phone), so a scripted line costs one generation for all learners.
+- **Backups everywhere:** if DigitalOcean fails, Groq answers; if ElevenLabs fails, Fish Audio speaks; if no voice is ready in time, the phone's own text-to-speech reads the line.
 
-1. Delete `App.tsx` and `index.ts`.
-2. Copy the `app/` and `src/` folders from this repo into the project.
-3. In `package.json` set `"main": "expo-router/entry"`.
-4. In `app.json`, inside `"expo"`, add:
-   ```json
-   "scheme": "speakia",
-   "plugins": [
-     "expo-router",
-     ["expo-audio", { "microphonePermission": "Speakia uses the microphone so you can speak in the story." }]
-   ]
-   ```
-5. `npx expo start`, then scan the QR code with Expo Go (Android) or the Camera app (iPhone).
+## Run it locally
 
-## Accounts and saved progress (Firebase, free)
+Requirements: **Node.js 20 or newer**, and the **Expo Go** app on an Android phone or iPhone (same Wi-Fi as the computer).
 
-Accounts use Firebase Authentication; each learner's profile and finished episodes are saved in Firestore under `users/{uid}` (and kept on the phone too, so the app opens instantly and works offline).
+```bash
+git clone https://github.com/yomidotk/speakia.git
+cd speakia
+npm install
+cp .env.example .env
+npx expo start
+```
 
-1. In the [Firebase console](https://console.firebase.google.com), project `speakia-e70e7`:
-   - **Project settings → Your apps → Web app (`</>`)**: copy the config values into `.env` (see `.env.example`).
-   - **Authentication → Sign-in method**: enable **Email/Password** and **Anonymous** (Anonymous lets guests use voice and keep their progress when they create an account later).
-   - **Firestore Database → Create database** (production mode), then **Rules**: paste `firestore.rules` and **Publish**.
-2. Restart `npx expo start`.
+Scan the QR code with Expo Go (Android) or the Camera app (iPhone). Press `w` to open it in a browser.
 
-**Google sign-in** (optional):
-- **Authentication → Sign-in method → Google**: enable it, then copy **Web SDK configuration → Web client ID** into `.env` as `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
-- **Project settings → Your apps → Add app → Android**: package `com.speakia.app`, plus the **SHA-1** of the EAS signing key (`npx eas-cli credentials -p android`, or expo.dev → project → Credentials). No need to download `google-services.json`.
-- **Authentication → Settings → Authorized domains**: add the web demo's domain (for example `fulldready.tech`).
-- On a phone it works in a built app (APK or development build), not in Expo Go, which doesn't include Google's native sign-in. On the web it opens Google's popup.
+**Fill in `.env`** (never commit it). Every value is public by design (it ends up in the app) but specific to our project:
 
-The Firebase config is not a secret; Firebase Auth plus `firestore.rules` is what protects each learner's data.
+| Variable | Where it comes from |
+|---|---|
+| `EXPO_PUBLIC_API_URL` | the server's address, e.g. `https://speakia-api.<you>.workers.dev` |
+| `EXPO_PUBLIC_FIREBASE_*` (6 values) | Firebase → Project settings → Your apps → Web app |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Firebase → Authentication → Google → Web SDK configuration |
 
-## Turn on voice and AI (free)
+With `EXPO_PUBLIC_API_URL` empty, the app runs in **demo mode**: you can browse everything and read the scripts, but there is no AI or voice.
 
-The server is a Cloudflare Worker in `server/`. It keeps the AI keys secret and uses Groq (free plan) for speech-to-text (Whisper) and the character replies (GPT-OSS 120B), and Fish Audio (`s2.1-pro-free`) for the characters' voices. It only answers requests that carry a valid Firebase ID token for `speakia-e70e7`, so no key lives in the app. Voiced lines are stored in Cloudflare KV, so a line every learner hears costs one Fish Audio call. Before deploying your own copy, create the KV store with `npx wrangler kv namespace create AUDIO` and put its id in `server/wrangler.toml`.
+Google sign-in on a phone needs a built app (APK or development build); it isn't available inside Expo Go.
 
-1. Pick a voice for each character on [fish.audio](https://fish.audio) (Discover), copy its ID, and paste it into `server/wrangler.toml` (`FISH_VOICE_SARA`, `FISH_VOICE_YACINE`, `FISH_VOICE_BENALI`, `FISH_VOICE_HADDAD`). Voice IDs are not secret.
-2. Deploy:
+### Firebase setup (accounts and progress)
+
+In the [Firebase console](https://console.firebase.google.com):
+
+- **Authentication → Sign-in method:** enable **Email/Password**, **Anonymous** (guests) and **Google**.
+- **Authentication → Settings → Authorized domains:** add the web demo's domain (`fulldready.tech`).
+- **Project settings → Your apps → Add app → Android:** package `com.speakia.app` with the SHA-1 of the EAS signing key (`npx eas-cli credentials -p android`). Needed for Google sign-in on Android.
+- **Firestore Database:** create it, then paste `firestore.rules` under **Rules** and **Publish**. Each learner can only read and write their own data.
+
+### The server (AI and voices)
+
+The server is a Cloudflare Worker in `server/`.
 
 ```bash
 cd server
 npm install
 npx wrangler login
-npx wrangler secret put GROQ_API_KEY   # from console.groq.com
-npx wrangler secret put FISH_API_KEY   # from fish.audio > API keys
-npx wrangler deploy                    # prints https://speakia-api.<you>.workers.dev
+npx wrangler secret put GROQ_API_KEY          # console.groq.com (speech-to-text, backup chat)
+npx wrangler secret put DO_MODEL_ACCESS_KEY   # DigitalOcean → Serverless Inference → Model Access Keys
+npx wrangler secret put ELEVENLABS_API_KEY    # elevenlabs.io → API Keys
+npx wrangler secret put FISH_API_KEY          # fish.audio → API keys (backup voices)
+npx wrangler deploy                           # prints https://speakia-api.<you>.workers.dev
 ```
 
-If Fish Audio is not set up or a line fails, the app reads it with the phone's built-in voice instead.
+- Secrets are stored by Cloudflare, never in the code. For a local server, put the same keys in `server/.dev.vars` (ignored by git) and run `npx wrangler dev`.
+- Character voices are chosen in `server/wrangler.toml` (`ELEVEN_VOICE_*` and `FISH_VOICE_*`); voice IDs are not secret. A character without an ElevenLabs voice uses Fish Audio.
+- Only `GROQ_API_KEY` is required. Without DigitalOcean the conversation uses Groq's free plan (about 4 answers a minute for the whole app); without ElevenLabs or Fish, lines are read by the phone's built-in voice.
+- When deploying your own copy, create the voice store with `npx wrangler kv namespace create AUDIO` and put its id in `server/wrangler.toml`.
 
-**More AI capacity (recommended for demos):** Groq's free plan allows about 8K tokens a minute, about 4 answers a minute for the whole app. With a DigitalOcean [model access key](https://docs.digitalocean.com/products/inference/how-to/manage-model-access-keys/) (serverless inference, prepaid; gpt-oss-120b costs about $0.0005 per answer), the server uses DigitalOcean for the conversation and keeps Groq as backup and for speech-to-text:
+### Checks
 
 ```bash
-npx wrangler secret put DO_MODEL_ACCESS_KEY
+npm run typecheck              # the app
+cd server
+npm test                       # 36 tests: script steps, both roles, off-topic and goodbye handling, voices, providers…
+npm run typecheck
+npm run try                    # plays the scenarios with tricky answers against the real AI and flags problems
 ```
 
-To check the scenarios against the real model: `npm run try` in `server/` (see `server/scripts/try-scenarios.ts`).
+`npm run try` needs a key in the terminal (for example `$env:DO_MODEL_ACCESS_KEY="…"` in PowerShell) and uses a little of the AI quota.
 
-In the app's `.env` (never commit it), set:
+## Build the Android app (APK)
 
+```bash
+npm install -g eas-cli
+eas build -p android --profile preview
 ```
-EXPO_PUBLIC_API_URL=https://speakia-api.<you>.workers.dev
+
+EAS builds in the cloud and gives a download link and a QR code. The build reads `.env` from your computer.
+
+## Publish the web demo
+
+```bash
+bash scripts/deploy-web.sh
 ```
 
-Restart `npx expo start`. The Me tab shows "Connected" instead of "Demo mode".
+Builds the web version of the app, adds the phone mock-up page from `showcase/`, and publishes both to the `gh-pages` branch (GitHub Pages). The `main` branch is not touched.
 
 ## Project structure
 
 ```
-app/                     screens (Expo Router: one file = one screen)
-  index.tsx              Welcome
-  signin.tsx, signup.tsx Accounts (stored on the phone for now)
-  onboarding/            profile → major → level → test → result
-  (tabs)/                Map, Seasons, Progress, Me
-  episode/[id]/          intro → watch → role → speak → result
+app/                        screens (Expo Router: one file = one screen)
+  index.tsx                 welcome
+  signin.tsx, signup.tsx    accounts (email, Google, guest)
+  onboarding/               avatar → profile → major → level → quiz → speaking test → result
+  (tabs)/                   map, seasons, progress, me
+  episode/[id]/             intro → watch (listen) → role → speak → result
 src/
-  content/cast.ts        the four characters (colours, voices, personality)
-  content/episodes.ts    Season 1 levels, scenes, roles, hints
-  components/            Character (animated SVG), Place (six illustrated places), Icon, kit (inputs, tiles, sheets), buttons…
-  placement.ts           speaking-test level estimate (a practice estimate, not CEFR certification)
-  draft.ts               onboarding answers held in memory until finished
-  api.ts                 calls to the server + demo mode
-  voice.ts               character voices (phone text-to-speech)
-  storage.ts             profile and attempts saved on the phone
-server/                  Cloudflare Worker: /transcribe and /turn
+  content/episodes.ts       Season 1: the teacher's scenarios, expected answers, hints, facts
+  content/cast.ts           the characters (look, personality, phone voice)
+  content/avatars.ts        the learner's avatar builder
+  content/b1Quiz.ts         the teacher's B1 placement quiz
+  practice-api.ts           practice sessions with the server (and demo mode)
+  practice-core.ts          shared rules: corrections, goodbyes, hints, results
+  voice.ts                  character voices: download once, play, phone-voice fallback
+  storage.ts                profile, progress, Firebase sign-in and sync
+  placement.ts              placement level (quiz + speaking)
+  components/               Character (animated SVG), Place (illustrated places), map icons, UI kit
+server/
+  src/index.ts              routes: speech-to-text, voices, placement assessment
+  src/practice.ts           episode sessions: follows the script, asks the AI, builds results
+  src/chat.ts               AI providers in order (DigitalOcean, then Groq)
+  test/                     automated tests
+  scripts/try-scenarios.ts  real-AI check of the scenarios
+showcase/                   the web demo page (phone mock-up)
+firestore.rules             who can read and write what in Firestore
 ```
 
-Adding a level = add an episode object in `src/content/episodes.ts` and set `playable: true`.
+**Adding an episode:** add it to `EPISODES` in `src/content/episodes.ts` with a `guide` (lines, what each answer must do, hints, facts) and `playable: true`, plus its listening-scene answers and expected answers in the same file. Then deploy the server, which reads the same file.
 
 ## Known limitations
 
-- Without the server, character voices use the phone's built-in text-to-speech, so they sound different on each phone.
-- The Fish Audio free tier has usage limits; cached lines do not count again.
-- Speech recognition of Darija is unreliable; French words mixed into English work better.
-- Progress is stored only on the phone.
-- The free AI plan has rate limits: fine for testing and judging, not for many users.
+- Episodes 5 and 6 aren't written yet.
+- Pronunciation isn't scored: the AI reads a transcript of what the learner said.
+- Speech recognition of Darija is unreliable; French or Arabic words mixed into English work better.
+- The voice and AI services are paid by credit (ElevenLabs, DigitalOcean) or rate-limited (Groq's free plan); fine for testing and the demo, not sized for many users.
+- Google sign-in on a phone needs the APK, not Expo Go.
 
 ## Team
 
-| Name | What they built |
-|---|---|
-| [Name] | [e.g. App screens, voice recording, AI server] |
-| [Name] | [e.g. Character and place illustrations] |
-| [Name] | [e.g. Level scripts and hints] |
-| [Name] | [e.g. User interviews, testing, demo video] |
+| Name | Role | What they built |
+|---|---|---|
+| | | |
+| | | |
+| | | |
+| | | |
 
 ## Tech stack
 
-TypeScript, Expo (React Native), Expo Router, react-native-svg, expo-audio, expo-speech, AsyncStorage, Cloudflare Workers, Groq (Whisper + GPT-OSS), Fish Audio, Firebase (Auth + Firestore). AI coding assistants were used to write much of the code.
+TypeScript · Expo (React Native) and Expo Router · react-native-svg · expo-audio · Firebase (Authentication, Firestore) · Cloudflare Workers and KV · DigitalOcean serverless inference (gpt-oss-120b) · Groq (Whisper, gpt-oss) · ElevenLabs and Fish Audio (voices) · EAS Build · GitHub Pages.
+
+AI coding assistants were used to write much of the code.
