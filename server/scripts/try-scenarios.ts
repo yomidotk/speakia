@@ -92,7 +92,7 @@ const PLANS: Plan[] = [
 ];
 
 /** Things that should never happen, whatever the answer. */
-function problems(plan: Plan, r: PracticeReply, saidNames: Set<string>, before: number, expect: string) {
+function problems(plan: Plan, r: PracticeReply, saidNames: Set<string>, before: number, expect: string, why: string) {
   const out: string[] = [];
   const reply = r.reply;
   const moved = r.snapshot.step > before;
@@ -108,7 +108,8 @@ function problems(plan: Plan, r: PracticeReply, saidNames: Set<string>, before: 
   if (plan.role === 1 && /\bwelcome\b|welcome pack|student services|\bB12\b/i.test(r.speechParts.filter((p) => p.live).map((p) => p.text).join(' '))) out.push('the AI talks like the host');
   // not done yet: the AI should ask its own follow-up, not repeat the scripted line
   const repeated = r.speechParts.some((p) => !p.live) && !moved && r.snapshot.history.filter((l) => l.from === 'partner' && l.text === r.speechParts.at(-1)?.text).length > 1;
-  if (expect === 'stay' && repeated && !/off-topic|tries to change/.test(plan.answers.find((a) => a.expect === expect)?.why ?? '')) out.push('repeated the scripted line instead of a follow-up');
+  // (after an off-topic message, asking the question again is right)
+  if (expect === 'stay' && repeated && !/off-topic|tries to change/.test(why)) out.push('repeated the scripted line instead of a follow-up');
   const sentences = reply.split(/(?<=[.!?])\s+/).map((x) => x.toLowerCase().replace(/[^a-z ]/g, '').trim()).filter(Boolean);
   if (new Set(sentences).size < sentences.length) out.push('says the same sentence twice');
   return out;
@@ -136,7 +137,7 @@ for (const plan of PLANS.filter((p) => !only || p.episode === only)) {
     for (const p of r.speechParts) console.log(`  ${CAST[p.who!].shortName}${p.live ? ' (AI)' : ''}: ${p.text}`);
     const c = r.snapshot.turns.at(-1)?.corrections ?? [];
     if (c.length) console.log(`    feedback: ${c.map((x) => `${x.said} → ${x.better}`).join(' · ')}`);
-    const bad = problems(plan, r, saidNames, before, a.expect);
+    const bad = problems(plan, r, saidNames, before, a.expect, a.why);
     console.log(`    step ${before} → ${r.snapshot.step}  ${bad.length ? `⚠ ${bad.join('; ')}` : '✓'}`);
     flagged += bad.length;
     if (r.done) break;
