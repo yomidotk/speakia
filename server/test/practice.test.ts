@@ -392,3 +392,12 @@ test('voices: ElevenLabs for characters that have one, Fish for the rest and whe
   hosts.length = 0; assert.equal((await ask('sara')).status, 200); assert.deepEqual(hosts, ['api.fish.audio']);
   hosts.length = 0; failEleven = true; assert.equal((await ask('benali')).status, 200); assert.deepEqual(hosts, ['api.elevenlabs.io', 'api.fish.audio']);
 });
+
+test('characters may answer personal small talk freely, but university facts stay strict', async () => {
+  mockModel({ reply: 'Great!', advance: true, evidence: 'yes' }, (body) => {
+    const system = body.messages[0].content;
+    assert.match(system, /About yourself .*answer freely/); assert.match(system, /About the university .*use only the facts/);
+    assert.match(system, /favourite film works as well as/);
+  });
+  await turn(await start(), 'yes');
+});
