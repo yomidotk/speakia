@@ -7,7 +7,7 @@ import { BackButton } from '../../../src/components/BackButton';
 import { Body, Button, Label, Title } from '../../../src/components/ui';
 import { CAST } from '../../../src/content/cast';
 import { getEpisode } from '../../../src/content/episodes';
-import { C, F, shadow } from '../../../src/theme';
+import { C, F } from '../../../src/theme';
 
 /** Screen 13 · Choose a side. The learner joins one character; the AI plays the other and has to be convinced. */
 export default function Role() {

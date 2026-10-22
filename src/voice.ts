@@ -201,7 +201,6 @@ export async function say(who: CastId, text: string, cb: Callbacks = {}, slow = 
   const mine = ++sayCount;
   if (API) {
     const t0 = Date.now();
-    const url = speakUrl(who, text, slow);
     const logStart: Callbacks = {
       ...cb,
       onStart: () => {

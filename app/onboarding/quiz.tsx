@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Heading, Screen, StepBar, TopBar, k } from '../../src/components/kit';
+import { Heading, Screen, StepBar, TopBar } from '../../src/components/kit';
 import { Button } from '../../src/components/ui';
 import { B1_QUIZ, PARTS, TEXTS } from '../../src/content/b1Quiz';
 import { clearQuiz, scoreQuiz } from '../../src/placement';

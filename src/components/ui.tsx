@@ -34,19 +34,6 @@ export function Button({
   );
 }
 
-export function Chip({ label, selected, onPress, tint = C.sun }: { label: string; selected?: boolean; onPress?: () => void; tint?: string }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[s.chip, selected ? { backgroundColor: tint, borderColor: tint } : null]}
-    >
-      <Text style={[s.chipText, selected && { fontFamily: F.heavy }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={[s.card, style]}>{children}</View>;
 }
@@ -89,8 +76,6 @@ export function Stars({ count, size = 14 }: { count: number; size?: number }) {
 const s = StyleSheet.create({
   btn: { minHeight: 54, borderRadius: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0 },
   btnText: { fontFamily: F.heavy, fontSize: 15, textAlign: 'center', lineHeight: 21 },
-  chip: { borderWidth: 2, borderColor: C.skyTint, backgroundColor: C.white, borderRadius: 999, paddingVertical: 10, paddingHorizontal: 16, minHeight: 44, justifyContent: 'center' },
-  chipText: { fontFamily: F.bold, fontSize: 14, color: C.navy },
   card: { backgroundColor: C.white, borderRadius: 22, padding: 16, ...shadow },
   label: { fontFamily: F.heavy, fontSize: 12, letterSpacing: 1, color: C.muted, textTransform: 'uppercase' },
   body: { fontFamily: F.body, fontSize: 15, lineHeight: 22, color: '#3D4466' },
