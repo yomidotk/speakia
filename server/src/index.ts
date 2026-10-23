@@ -316,6 +316,9 @@ const ELEVEN_VOICES: Record<string, keyof Env> = {
 
 type Voice = { provider: 'eleven' | 'fish'; model: string; voice?: string };
 
+// Speaking speed: a little slower than natural, so B1 learners can follow; `slow` is slower still.
+const SPEED = { normal: 0.9, slow: 0.8 };
+
 /**
  * ElevenLabs (Flash, starts in well under a second) for every character that has an ElevenLabs
  * voice, so new AI lines don't keep the learner waiting; Fish Audio for the others and as backup.
@@ -334,7 +337,7 @@ function generate(v: Voice, text: string, slow: boolean, env: Env) {
     return fetch(`https://api.elevenlabs.io/v1/text-to-speech/${v.voice}/stream?output_format=mp3_44100_64`, {
       method: 'POST',
       headers: { 'xi-api-key': env.ELEVENLABS_API_KEY!, 'content-type': 'application/json' },
-      body: JSON.stringify({ text, model_id: v.model, voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: slow ? 0.85 : 1 } }),
+      body: JSON.stringify({ text, model_id: v.model, voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: slow ? SPEED.slow : SPEED.normal } }),
     });
   }
   return fetch('https://api.fish.audio/v1/tts', {
@@ -347,7 +350,7 @@ function generate(v: Voice, text: string, slow: boolean, env: Env) {
       mp3_bitrate: 64,
       latency: 'low',
       chunk_length: 100,
-      prosody: { speed: slow ? 0.85 : 1 },
+      prosody: { speed: slow ? SPEED.slow : SPEED.normal },
     }),
   });
 }
@@ -365,7 +368,7 @@ export async function speak(url: URL, env: Env, ctx: ExecutionContext) {
   let failure = '';
   for (const v of voices) {
     // Key: everything that changes the audio, nothing about who asked.
-    const key = await sha256(`${v.provider === 'eleven' ? 'eleven|' : ''}${v.model}|${v.voice ?? 'default'}|${slow ? 1 : 0}|${text}`);
+    const key = await sha256(`${v.provider === 'eleven' ? 'eleven|' : ''}${v.model}|${v.voice ?? 'default'}|speed ${slow ? SPEED.slow : SPEED.normal}|${text}`);
     if (env.AUDIO) {
       const stored = await env.AUDIO.get(key, 'arrayBuffer');
       if (stored) return new Response(stored, { headers: { ...audioHeaders, 'x-speakia-voice': 'stored' } });

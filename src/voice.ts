@@ -54,8 +54,9 @@ async function sayOnPhone(who: CastId, text: string, cb: Callbacks, slow: boolea
 
 // ---------- fetching lines (one download per line) ----------
 
+// `v` (the voice set) is ignored by the server; it makes browsers fetch lines again when voices change
 const speakUrl = (who: CastId, text: string, slow: boolean) =>
-  `${API}/speak?who=${who}&slow=${slow ? 1 : 0}&text=${encodeURIComponent(text)}`;
+  `${API}/speak?who=${who}&slow=${slow ? 1 : 0}&v=${VOICE_SET}&text=${encodeURIComponent(text)}`;
 
 /** Short stable file name for a line's audio. */
 function fileName(url: string) {
@@ -66,13 +67,13 @@ function fileName(url: string) {
 
 // Saved lines are named by their text, not by the voice, so a new set of voices needs a new folder:
 // otherwise the phone keeps playing lines recorded with the old voices. Bump this when voices change.
-const VOICE_SET = 'voice-eleven-1';
+const VOICE_SET = 'voice-eleven-2'; // 2: a little slower
 const voiceDir = Platform.OS === 'web' ? null : new Directory(Paths.cache, VOICE_SET);
 if (Platform.OS !== 'web') {
-  for (const old of ['voice']) {
+  for (const old of ['voice', 'voice-eleven-1']) {
     try {
       const dir = new Directory(Paths.cache, old);
-      if (dir.exists) dir.delete(); // lines recorded with the old (Fish) voices
+      if (dir.exists) dir.delete(); // lines recorded with older voices or speeds
     } catch {}
   }
 }
