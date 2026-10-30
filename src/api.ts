@@ -1,17 +1,12 @@
 import { Platform } from 'react-native';
 import { File } from 'expo-file-system';
-import { Level, idToken } from './storage';
+import { Level, authedFetch } from './storage';
 
 // Set in .env at the project root (see README):
 //   EXPO_PUBLIC_API_URL=https://speakia-api.<you>.workers.dev
 // The server only answers learners signed in with Firebase (account or guest), so no key lives in the app.
 const API = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const token = await idToken();
-  if (!token) throw new Error('Sign in to use voice and AI');
-  return { authorization: `Bearer ${token}` };
-}
 
 /** No server configured: the app runs in demo mode (practice-api.ts) with typing only. */
 export const isDemo = !API;
@@ -27,7 +22,7 @@ export async function transcribe(uri: string): Promise<string> {
     // "Unsupported FormDataPart implementation"). The file keeps its name, e.g. recording-123.m4a.
     form.append('file', new File(uri) as unknown as Blob);
   }
-  const res = await fetch(`${API}/transcribe`, { method: 'POST', headers: await authHeaders(), body: form });
+  const res = await authedFetch(`${API}/transcribe`, { method: 'POST', body: form });
   if (!res.ok) throw new Error(`Transcription failed (${res.status}): ${(await res.text()).slice(0, 300)}`);
   const data = (await res.json()) as { text?: string };
   return (data.text ?? '').trim();
@@ -48,9 +43,9 @@ export type Assessment = {
 /** Ask the server's AI teacher to grade the spoken answers against CEFR speaking criteria. */
 export async function assessSpeaking(answers: { question: string; text: string; seconds?: number }[]): Promise<Assessment> {
   if (!API) throw new Error('No server configured');
-  const res = await fetch(`${API}/assess`, {
+  const res = await authedFetch(`${API}/assess`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...(await authHeaders()) },
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ answers }),
   });
   if (!res.ok) throw new Error(`Evaluation failed (${res.status}): ${(await res.text()).slice(0, 300)}`);

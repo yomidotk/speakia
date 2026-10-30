@@ -1,4 +1,4 @@
-import { idToken } from './storage';
+import { authedFetch, idToken } from './storage';
 import { getEpisode, guideRole, type Hints } from './content/episodes';
 import { goodbyeSignal, measuredReport, type Measurements, type PracticeSnapshot, type SpeechPart } from './practice-core';
 const API = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
@@ -6,9 +6,8 @@ export type PracticeReply = { stateToken: string; snapshot: PracticeSnapshot; re
 export type ReportRequest = { requestId: string; stateToken: string; measurements: Measurements };
 export const requestId = () => `req-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const token = await idToken();
-  if (!token) throw new Error('Sign in to use the AI. Your answer is kept.');
-  const r = await fetch(`${API}/practice/${path}`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(45_000) });
+  if (!(await idToken())) throw new Error('Sign in to use the AI. Your answer is kept.');
+  const r = await authedFetch(`${API}/practice/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(45_000) });
   const data = await r.json().catch(() => ({}));
   if (r.status === 404) throw new Error('This server needs the practice update. Ask the backend owner to deploy the matching Worker.');
   if (r.status === 429) throw new Error('The AI usage limit was reached. Your answer is kept; wait before retrying.');

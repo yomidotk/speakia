@@ -388,10 +388,37 @@ export async function deleteEverything(): Promise<'ok' | 'relogin'> {
   return 'ok';
 }
 
-/** Firebase ID token for the voice/AI server, or null when there is no user. */
-export async function idToken(): Promise<string | null> {
+let guestSignIn: Promise<void> | null = null;
+
+/** Firebase ID token for the voice/AI server, or null when there is no user. `fresh` asks Firebase for a new one. */
+export async function idToken(fresh = false): Promise<string | null> {
   await authReady(); // after a reload, Firebase needs a moment to restore the saved sign-in
-  return (await user()?.getIdToken()) ?? null;
+  // A guest whose anonymous sign-in was lost (or never finished) gets a new one here; without it
+  // every voice and AI request is refused and the app falls back to the phone's robot voice.
+  if (!user() && auth && (await AsyncStorage.getItem(GUEST)) === '1') {
+    guestSignIn ??= signInAnonymously(auth)
+      .then(() => undefined)
+      .catch((e) => console.warn('[speakia] guest sign-in failed again:', e?.code ?? e))
+      .finally(() => { guestSignIn = null; });
+    await guestSignIn;
+  }
+  return (await user()?.getIdToken(fresh)) ?? null;
+}
+
+/**
+ * fetch() with the learner's token. If the server says the token is not accepted (401), it asks
+ * Firebase for a fresh token and tries once more, so a stale sign-in never needs a log-out to fix.
+ */
+export async function authedFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const send = async (fresh: boolean) => {
+    const token = await idToken(fresh);
+    if (!token) return null;
+    return fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), authorization: `Bearer ${token}` } });
+  };
+  const first = await send(false);
+  if (!first) throw new Error('Sign in to use voice and AI');
+  if (first.status !== 401) return first;
+  return (await send(true)) ?? first;
 }
 
 /** Who is using the app right now, for routing and for clear messages. */

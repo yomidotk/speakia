@@ -3,7 +3,7 @@ import * as Speech from 'expo-speech';
 import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { Directory, File, Paths } from 'expo-file-system';
 import { CAST, CastId } from './content/cast';
-import { idToken } from './storage';
+import { authedFetch, idToken } from './storage';
 
 // Character voices come from Fish Audio through our server (GET /speak). Each line is downloaded
 // once and kept on the phone, so replays and lines prepared during the intro play instantly.
@@ -94,10 +94,8 @@ function fetchLine(who: CastId, text: string, slow: boolean): Promise<string | n
   if (pending) return pending;
 
   const job = (async () => {
-    const token = await idToken();
-    if (!token) { console.warn("[speakia] DIAGNOSIS: Firebase token missing; voice request was NOT sent to backend."); return null; }
     const t0 = Date.now();
-    const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+    const res = await authedFetch(url);
     if (!res.ok) {
       console.warn(`[speakia] voice ${who}: server said ${res.status}`);
       return null;
