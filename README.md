@@ -4,15 +4,17 @@
 
 Built for **ThirdUni Cohort 1** (October 2026).
 
-- **Web demo** (an Android phone mock-up with the app inside): https://fulldready.tech/speakia/
+- **Web demo:** https://fulldready.tech/speakia/ shows a phone with Speakia on its home screen, on a computer or a phone browser: tap the icon and the real app opens inside it. The bare app is at https://fulldready.tech/speakia/app/.
 - **Android:** an APK built with EAS (see [Build the Android app](#build-the-android-app-apk))
+
+**The problem:** students study English for years but rarely speak it, so their first real conversation often happens when it matters most: an internship interview, a team meeting, a presentation. Algerian universities are now moving teaching to English, and almost nothing trains the speaking part. Speakia is a place to rehearse those conversations first.
 
 ## What the app does
 
 - **Accounts:** sign up or sign in with email and password or with Google, or continue as a guest. Progress is kept on the phone and synced to the learner's account (Firebase), so it follows them to any device. A guest who creates an account later keeps their progress.
 - **Onboarding:** build an avatar (skin, hair or hijab, glasses…), add a profile, choose a major (Computer Science for Season 1), then pick a level (A1–C2) or take the placement test: the English teacher's 20-question B1 quiz plus 4 spoken answers that an AI rates against CEFR speaking criteria.
-- **Season 1 map:** episodes on a road from the bottom of the screen up; each one unlocks when the previous one is finished.
-- **Episodes 1–4**, written by the team's English teacher at B1 level:
+- **Season 1 map (Campus Life):** six episodes on a road from the bottom of the screen up; each one unlocks when the previous one is finished, and finishing one earns up to three stars.
+- **Episodes 1–4** are playable, written by the team's English teacher at B1 level (5 *Deadline Trouble* and 6 *Presentation Day* are on the map but not written yet):
   1. **Orientation Day** with Sara, the student volunteer
   2. **Meeting the Professor** with Prof. Benali
   3. **Making Friends** with Rayan and Lina
@@ -22,7 +24,20 @@ Built for **ThirdUni Cohort 1** (October 2026).
   2. **Choose a role:** play Yacine (the characters talk to you), or in the one-to-one scenes play the host (Sara or the professor) while the AI plays Yacine.
   3. **Talk:** record your answer (or type it), check the transcript, and send. The character reacts to what you said, then the scene continues with the teacher's next line. The scene follows the teacher's script but stays flexible: different details, small talk and questions are answered naturally; a half answer gets one follow-up question; an off-topic message is gently brought back to the scene. Grammar mistakes never block the learner; they are collected for the feedback. Hints come in three steps: idea, sentence starter, example.
   4. **Results:** completion, independence stars (fewer hints, more stars), time, spoken and typed answers, corrections ("say it better") and short feedback in plain language.
-- **Progress, Seasons and Me tabs:** history, stats, level, profile, goals, privacy, log out, delete account.
+- **Seasons tab:** Season 1 *Campus Life* is open. Season 2 *Internship Hunt* (career fair, phone call, interview, first week) and Season 3 *Going Global* (exchange interview, conference, networking) are shown locked: they unlock after Campus Life and aren't written yet.
+- **Progress tab:** episodes finished, minutes recorded, practice indicators (words per turn, independence from hints, recording time), a checklist of communication skills (talking about yourself, polite questions, keeping a conversation going…), a recommended next practice, and the history of episodes with their stars.
+- **Me tab:** profile and avatar, major, goals, level, retake the speaking test, voice settings, privacy, log out, delete account.
+
+## What's next
+
+These are plans, not features of the app yet:
+
+- **Bring your own interview:** paste a real internship or job offer (Sonatrach, Djezzy, a startup…) and Speakia builds a mock interview for that exact role.
+- **Live call mode:** a hands-free conversation with no record button, like a real phone interview.
+- **Algerian-style mistakes:** feedback on the habits French and Darija leave in English ("I have 22 years" → "I'm 22", "make a meeting" → "have a meeting").
+- **Confidence score:** count "uhh", "umm" and long pauses from the recording timings and show them going down over sessions.
+- **Teacher dashboard:** a class code, who practised, and the class's most common mistakes. Free for students, paid by universities.
+- Episodes 5–6 and Seasons 2–3.
 
 ## How it works
 
@@ -167,15 +182,20 @@ firestore.rules             who can read and write what in Firestore
 
 ## Team
 
-| Name | Role | What they built |
-|---|---|---|
-| | | |
-| | | |
-| | | |
-| | | |
+| Name | What they did |
+|---|---|
+| Chiraz Benbelkhir | Designed and built the mobile app and its backend, developed the AI conversations and character voices, and designed the characters and campus map. |
+| Norhene Benabbou | Designed and wrote the learning content: CEFR-based, scenario-driven episodes with staged dialogues, expected responses and graded hints. |
+| Yousra Chahinez Aidaoui | Came up with the idea for Speakia and built the first version of the practice sessions: the flow for each conversation turn and the end-of-episode feedback report. |
+| Ania | Brainstormed early design ideas for the app's look. |
 
 ## Tech stack
 
-TypeScript · Expo (React Native) and Expo Router · react-native-svg · expo-audio · Firebase (Authentication, Firestore) · Cloudflare Workers and KV · DigitalOcean serverless inference (gpt-oss-120b) · Groq (Whisper, gpt-oss) · ElevenLabs and Fish Audio (voices) · EAS Build · GitHub Pages.
+TypeScript, JavaScript, Expo (React Native), Expo Router, React Native Web, react-native-svg, expo-audio, expo-speech, Firebase Authentication, Cloud Firestore, Google Sign-In, Cloudflare Workers, Cloudflare KV, jose (JWT), DigitalOcean Serverless Inference (gpt-oss-120b), Groq (Whisper large-v3 turbo speech-to-text, gpt-oss), ElevenLabs (Flash v2.5 voices), Fish Audio (backup voices), EAS Build, GitHub Pages, Node.js test runner, Claude Code.
 
-AI coding assistants were used to write much of the code.
+## How we used AI
+
+AI is both inside the product and in how we built it:
+
+- **In the app:** gpt-oss-120b (DigitalOcean, Groq as backup) runs each conversation and writes the feedback; Whisper turns the learner's speech into text; ElevenLabs gives every character a voice; an AI rates the placement test's spoken answers against CEFR criteria.
+- **Building it:** we used Claude Code (Anthropic) heavily to write and review most of the code, the server tests, this README, and to find and fix bugs from our test sessions. We decided what to build, wrote the scenarios with the teacher, tested every episode on real phones, and checked the AI's work before it shipped.
