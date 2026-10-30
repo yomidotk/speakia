@@ -128,15 +128,11 @@
   @media (max-height: 720px) and (min-width: 761px) { .lead { display: none; } }
   @media (max-height: 600px) and (min-width: 761px) { .steps, .note { display: none; } }
 
-  /* small screens: no phone-in-a-phone, just open the app */
+  /* small screens: only the phone, filling the screen, nothing around it */
   @media (max-width: 760px) {
-    main { flex-direction: column; align-items: stretch; justify-content: center; gap: clamp(14px, 3vh, 24px); }
-    .stage { display: none; }
-    .panel { max-width: none; }
-    .desktop-only { display: none; }
+    main { padding: 12px; gap: 0; }
+    .panel { display: none; }
   }
-  .mobile-only { display: none; }
-  @media (max-width: 760px) { .mobile-only { display: inline-flex; } }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -156,8 +152,6 @@
       <li><b style="background:var(--peach)">2</b>Choose your side</li>
       <li><b style="background:var(--mint)">3</b>Speak, and get feedback</li>
     </ol>
-
-    <a class="btn primary mobile-only" id="openMobile" href="#">Open Speakia</a>
 
     <div class="codes">
       <div class="code desktop-only">
@@ -265,9 +259,12 @@
   tick();
   setInterval(tick, 15000);
 
-  // ---- fit the phone to the window height (the app inside always sees a 390×844 phone) ----
+  // ---- fit the phone to the window (the app inside always sees a 390×844 phone) ----
   const fit = () => {
-    const s = Math.min(1, (innerHeight - 48) / 844, (innerWidth * 0.5) / 390);
+    // On a phone the mockup alone fills the screen; on a computer it fits beside the text.
+    const s = innerWidth <= 760
+      ? Math.min(1, (innerWidth - 24) / 390, (innerHeight - 24) / 844)
+      : Math.min(1, (innerHeight - 48) / 844, (innerWidth * 0.5) / 390);
     document.documentElement.style.setProperty('--scale', Math.max(0.3, s).toFixed(3));
   };
   fit();
@@ -333,8 +330,8 @@
     q.make();
     el.innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
   };
-  qr(document.getElementById('qrWeb'), appUrl);
-  document.getElementById('openMobile').href = appUrl;
+  // the QR opens this same page: phones get the mockup too
+  qr(document.getElementById('qrWeb'), location.origin + location.pathname);
 
   const apkLink = document.getElementById('apkLink');
   if (apkUrl) {
