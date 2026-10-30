@@ -185,7 +185,7 @@ firestore.rules             who can read and write what in Firestore
 | Name | What they did |
 |---|---|
 | Chiraz Benbelkhir | Designed and built the mobile app and its backend, developed the AI conversations and character voices, and designed the characters and campus map. |
-| Norhene Benabbou | Designed and wrote the learning content: CEFR-based, scenario-driven B1 episodes with staged dialogues, expected responses and graded hints. |
+| Norhene Benabbou | Created and wrote the learning content: CEFR-based, scenario-driven B1 episodes with staged dialogues, expected responses and graded hints. |
 | Yousra Chahinez Aidaoui | Came up with the idea for Speakia and built the first version of the practice sessions: the flow for each conversation turn and the end-of-episode feedback report. |
 | Anya Liza Louni | Brainstormed early design ideas for the app's look. |
 
